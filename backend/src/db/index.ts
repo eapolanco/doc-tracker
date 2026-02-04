@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath =
-  process.env.DATABASE_URL || path.join(__dirname, "../../data.db");
+const rootDir = path.join(__dirname, "../../../");
+const dbPath = path.join(rootDir, "backend/data.db");
 const sqlite = new Database(dbPath);
 export const db = drizzle(sqlite, { schema });

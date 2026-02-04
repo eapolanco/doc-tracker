@@ -92,30 +92,52 @@ async function scanDirectory(dir: string, category: string = "General") {
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
+        // Skip common large folders
+        if (entry.name === "node_modules" || entry.name === ".git") continue;
         await scanDirectory(fullPath, entry.name);
       } else {
         const stats = await fs.stat(fullPath);
-        const id = uuidv4();
-
-        // Add to DB if not exists (simplified for scaffolding)
-        await db
-          .insert(documents)
-          .values({
-            id,
-            name: entry.name,
-            category,
-            path: fullPath,
-            cloudSource: "local",
-            lastModified: stats.mtime,
-          })
-          .onConflictDoNothing();
-
-        await db.insert(documentHistory).values({
-          documentId: id,
-          action: "sync",
-          timestamp: new Date(),
-          details: "Initial scan discovery",
+        
+        // Find existing doc by path
+        const existingDoc = await db.query.documents.findFirst({
+          where: eq(documents.path, fullPath)
         });
+
+        if (!existingDoc) {
+          const id = uuidv4();
+          await db
+            .insert(documents)
+            .values({
+              id,
+              name: entry.name,
+              category,
+              path: fullPath,
+              cloudSource: "local",
+              lastModified: stats.mtime,
+            });
+
+          await db.insert(documentHistory).values({
+            documentId: id,
+            action: "sync",
+            timestamp: new Date(),
+            details: "Initial scan discovery",
+          });
+        } else if (existingDoc.lastModified.getTime() !== stats.mtime.getTime()) {
+          // Update if modified
+          await db.update(documents)
+            .set({ 
+              lastModified: stats.mtime,
+              name: entry.name // In case it was renamed
+            })
+            .where(eq(documents.id, existingDoc.id));
+
+          await db.insert(documentHistory).values({
+            documentId: existingDoc.id,
+            action: "update",
+            timestamp: new Date(),
+            details: `Detected local file change at ${fullPath}`,
+          });
+        }
       }
     }
   } catch (err) {
@@ -144,7 +166,7 @@ app.get("/api/history", async (req, res) => {
 });
 
 app.post("/api/scan", async (req, res) => {
-  const rootDir = path.join(__dirname, "../../../"); // Parent of doc-tracker
+  const rootDir = path.join(__dirname, "../../documents");
   await scanDirectory(rootDir);
   res.json({ message: "Scan complete" });
 });

@@ -17,6 +17,7 @@ function App() {
   const [activeTab, setActiveTab] = useState<"docs" | "history" | "settings">(
     "docs",
   );
+  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchData = async () => {
@@ -64,7 +65,10 @@ function App() {
   const getTitle = () => {
     switch (activeTab) {
       case "docs":
-        return "Documents";
+        if (sourceFilter === "local") return "Local Documents";
+        if (sourceFilter === "onedrive") return "OneDrive Documents";
+        if (sourceFilter === "google") return "Google Drive Documents";
+        return "All Documents";
       case "history":
         return "Activity History";
       case "settings":
@@ -74,9 +78,18 @@ function App() {
     }
   };
 
+  const filteredDocuments = sourceFilter
+    ? documents.filter((doc) => doc.cloudSource === sourceFilter)
+    : documents;
+
   return (
     <>
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        sourceFilter={sourceFilter}
+        setSourceFilter={setSourceFilter}
+      />
 
       <main className="main-content">
         <header
@@ -92,7 +105,7 @@ function App() {
             </h1>
             <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
               {activeTab === "docs"
-                ? `Managing ${documents.length} documents`
+                ? `Managing ${filteredDocuments.length} documents`
                 : activeTab === "history"
                   ? "Recent changes and syncs"
                   : "Manage cloud accounts and preferences"}
@@ -119,7 +132,7 @@ function App() {
           </div>
         </header>
 
-        {activeTab === "docs" && <DocumentGrid documents={documents} />}
+        {activeTab === "docs" && <DocumentGrid documents={filteredDocuments} />}
         {activeTab === "history" && <HistoryTimeline history={history} />}
         {activeTab === "settings" && (
           <Settings accounts={accounts} appSettings={appSettings} />
