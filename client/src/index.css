@@ -1,10 +1,20 @@
 @import "tailwindcss";
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
 @layer base {
   body,
-  #root {
+  #root,
+  button,
+  input,
+  select,
+  textarea {
     font-family: "Inter", sans-serif;
-    @apply bg-gray-50 text-gray-900 h-screen overflow-hidden;
+    @apply bg-gray-50 text-gray-900;
+  }
+
+  body,
+  #root {
+    @apply h-screen overflow-hidden;
     margin: 0;
     padding: 0;
   }
