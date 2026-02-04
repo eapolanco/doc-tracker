@@ -5,7 +5,20 @@ export interface Document {
   path: string;
   cloudSource: string;
   lastModified: string;
+  type?: "file" | "folder";
 }
+
+export interface FolderItem {
+  id: string;
+  name: string;
+  path: string;
+  type: "folder";
+  cloudSource: string;
+  category: string;
+  lastModified: string;
+}
+
+export type FileSystemItem = Document | FolderItem;
 
 export interface HistoryItem {
   id: number;

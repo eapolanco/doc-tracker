@@ -18,21 +18,25 @@ import {
   Check,
   X,
 } from "lucide-react";
-import type { Document } from "@/types";
+import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
 import axios from "axios";
 
 interface Props {
-  documents: Document[];
-  onPreview: (doc: Document) => void;
+  documents: FileSystemItem[];
+  onPreview: (doc: FileSystemItem) => void;
   onRefresh: () => void;
   viewType: "grid" | "list";
+  isSearching: boolean;
 }
 
 const API_BASE = "/api";
 
-const getFileIcon = (fileName: string) => {
-  const ext = fileName.split(".").pop()?.toLowerCase();
+const getFileIcon = (item: FileSystemItem) => {
+  if (item.type === "folder") {
+    return { icon: Folder, color: "text-amber-500", bg: "bg-amber-50" };
+  }
+  const ext = item.name.split(".").pop()?.toLowerCase();
 
   switch (ext) {
     case "pdf":
@@ -92,6 +96,7 @@ export default function DocumentGrid({
   onPreview,
   onRefresh,
   viewType,
+  isSearching,
 }: Props) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -201,64 +206,68 @@ export default function DocumentGrid({
     }
   };
 
-  const renderActionsMenu = (doc: Document) => (
-    <div className="relative">
-      <button
-        className={`p-1.5 rounded-md transition-colors ${
-          activeMenu === doc.id
-            ? "bg-gray-100 text-gray-900"
-            : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-        }`}
-        onClick={(e) => {
-          e.stopPropagation();
-          setActiveMenu(activeMenu === doc.id ? null : doc.id);
-        }}
-      >
-        <MoreVertical size={16} />
-      </button>
-
-      {activeMenu === doc.id && (
-        <div
-          ref={menuRef}
-          className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[160px] z-50 flex flex-col p-1"
-          onClick={(e) => e.stopPropagation()}
+  const renderActionsMenu = (doc: FileSystemItem) => {
+    if (doc.type === "folder") return <div className="w-8" />;
+    const fileDoc = doc as Document;
+    return (
+      <div className="relative">
+        <button
+          className={`p-1.5 rounded-md transition-colors ${
+            activeMenu === doc.id
+              ? "bg-gray-100 text-gray-900"
+              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+          }`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveMenu(activeMenu === doc.id ? null : doc.id);
+          }}
         >
+          <MoreVertical size={16} />
+        </button>
+
+        {activeMenu === doc.id && (
           <div
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              onPreview(doc);
-              setActiveMenu(null);
-            }}
+            ref={menuRef}
+            className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[160px] z-50 flex flex-col p-1"
+            onClick={(e) => e.stopPropagation()}
           >
-            <Eye size={14} /> Preview
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPreview(doc);
+                setActiveMenu(null);
+              }}
+            >
+              <Eye size={14} /> Preview
+            </div>
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              onClick={(e) => handleDownload(e, fileDoc)}
+            >
+              <Download size={14} /> Download
+            </div>
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                startRename(fileDoc);
+              }}
+            >
+              <Edit2 size={14} /> Rename
+            </div>
+            <div className="h-px bg-gray-200 my-1" />
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
+              onClick={() => handleDelete(fileDoc)}
+            >
+              <Trash2 size={14} /> Delete
+            </div>
           </div>
-          <div
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
-            onClick={(e) => handleDownload(e, doc)}
-          >
-            <Download size={14} /> Download
-          </div>
-          <div
-            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              startRename(doc);
-            }}
-          >
-            <Edit2 size={14} /> Rename
-          </div>
-          <div className="h-px bg-gray-200 my-1" />
-          <div
-            className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
-            onClick={() => handleDelete(doc)}
-          >
-            <Trash2 size={14} /> Delete
-          </div>
-        </div>
-      )}
-    </div>
-  );
+        )}
+      </div>
+    );
+  };
 
   const renderRenameInput = (doc: Document) => (
     <div
@@ -295,7 +304,11 @@ export default function DocumentGrid({
     return (
       <div className="text-center py-16 text-gray-500">
         <Folder size={48} className="mx-auto mb-4 opacity-20" />
-        <p>No documents found. Click Sync to scan your directory.</p>
+        {isSearching ? (
+          <p>No documents match your search criteria.</p>
+        ) : (
+          <p>No documents found. Click Sync to scan your directory.</p>
+        )}
       </div>
     );
   }
@@ -345,7 +358,7 @@ export default function DocumentGrid({
           <div className="w-10 text-right">Actions</div>
         </div>
         {documents.map((doc) => {
-          const { icon: Icon, color, bg } = getFileIcon(doc.name);
+          const { icon: Icon, color, bg } = getFileIcon(doc);
           const isSelected = selectedIds.has(doc.id);
           return (
             <div
@@ -385,7 +398,7 @@ export default function DocumentGrid({
 
               <div className="flex-1 min-w-0 pr-4">
                 {renamingId === doc.id ? (
-                  renderRenameInput(doc)
+                  renderRenameInput(doc as Document)
                 ) : (
                   <div
                     className="text-sm font-semibold text-gray-900 truncate"
@@ -425,7 +438,7 @@ export default function DocumentGrid({
   return (
     <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 relative">
       {documents.map((doc) => {
-        const { icon: Icon, color, bg } = getFileIcon(doc.name);
+        const { icon: Icon, color, bg } = getFileIcon(doc);
         const isSelected = selectedIds.has(doc.id);
         return (
           <div
@@ -465,7 +478,7 @@ export default function DocumentGrid({
 
             <div className="flex-1 flex flex-col gap-4">
               {renamingId === doc.id ? (
-                renderRenameInput(doc)
+                renderRenameInput(doc as Document)
               ) : (
                 <div
                   className="text-base font-semibold text-gray-900 truncate"
