@@ -314,6 +314,43 @@ app.delete("/api/documents/:id", async (req, res) => {
   }
 });
 
+app.post("/api/documents/bulk-delete", async (req, res) => {
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No document IDs provided" });
+    }
+
+    await db.transaction(async (tx) => {
+      for (const id of ids) {
+        const doc = await tx.query.documents.findFirst({
+          where: eq(documents.id, id),
+        });
+
+        if (doc) {
+          await tx
+            .update(documents)
+            .set({ deleted: true })
+            .where(eq(documents.id, id));
+
+          await tx.insert(documentHistory).values({
+            documentId: id,
+            action: "delete",
+            timestamp: new Date(),
+            details: `Deleted document "${doc.name}" (Bulk)`,
+          });
+        }
+      }
+    });
+
+    res.json({ success: true, count: ids.length });
+  } catch (error) {
+    console.error("Bulk delete error:", error);
+    res.status(500).json({ error: "Failed to delete documents" });
+  }
+});
+
 // File upload endpoint
 app.post("/api/upload", upload.single("file"), async (req, res) => {
   try {

@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import {
   File,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  FileVideo,
+  FileAudio,
+  FileCode,
+  FileArchive,
   Folder,
   MoreVertical,
   ExternalLink,
@@ -24,6 +31,62 @@ interface Props {
 
 const API_BASE = "/api";
 
+const getFileIcon = (fileName: string) => {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+
+  switch (ext) {
+    case "pdf":
+      return { icon: FileText, color: "text-red-500", bg: "bg-red-50" };
+    case "doc":
+    case "docx":
+      return { icon: FileText, color: "text-blue-500", bg: "bg-blue-50" };
+    case "xls":
+    case "xlsx":
+    case "csv":
+      return {
+        icon: FileSpreadsheet,
+        color: "text-green-500",
+        bg: "bg-green-50",
+      };
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "gif":
+    case "svg":
+    case "webp":
+      return { icon: FileImage, color: "text-purple-500", bg: "bg-purple-50" };
+    case "mp4":
+    case "mov":
+    case "avi":
+    case "mkv":
+      return { icon: FileVideo, color: "text-orange-500", bg: "bg-orange-50" };
+    case "mp3":
+    case "wav":
+    case "ogg":
+      return { icon: FileAudio, color: "text-pink-500", bg: "bg-pink-50" };
+    case "js":
+    case "ts":
+    case "tsx":
+    case "jsx":
+    case "py":
+    case "html":
+    case "css":
+    case "json":
+      return { icon: FileCode, color: "text-cyan-500", bg: "bg-cyan-50" };
+    case "zip":
+    case "rar":
+    case "7z":
+    case "tar":
+    case "gz":
+      return { icon: FileArchive, color: "text-amber-500", bg: "bg-amber-50" };
+    case "txt":
+    case "md":
+      return { icon: FileText, color: "text-gray-500", bg: "bg-gray-50" };
+    default:
+      return { icon: File, color: "text-blue-600", bg: "bg-blue-50" };
+  }
+};
+
 export default function DocumentGrid({
   documents,
   onPreview,
@@ -33,6 +96,7 @@ export default function DocumentGrid({
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,6 +108,50 @@ export default function DocumentGrid({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Clear selection when documents length changes
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [documents.length]);
+
+  const toggleSelect = (
+    e: React.MouseEvent | React.ChangeEvent,
+    id: string,
+  ) => {
+    e.stopPropagation();
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === documents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(documents.map((doc) => doc.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (
+      confirm(`Are you sure you want to delete ${selectedIds.size} documents?`)
+    ) {
+      try {
+        await axios.post(`${API_BASE}/documents/bulk-delete`, {
+          ids: Array.from(selectedIds),
+        });
+        onRefresh();
+        setSelectedIds(new Set());
+      } catch (err) {
+        console.error("Failed to delete documents", err);
+        alert("Failed to delete documents");
+      }
+    }
+  };
 
   const handleDownload = (e: React.MouseEvent, doc: Document) => {
     e.stopPropagation();
@@ -192,10 +300,43 @@ export default function DocumentGrid({
     );
   }
 
+  const bulkActionsBar = selectedIds.size > 0 && (
+    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-6 animate-in slide-in-from-bottom-4 duration-300">
+      <span className="text-sm font-medium border-r border-gray-700 pr-6">
+        {selectedIds.size} items selected
+      </span>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleBulkDelete}
+          className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+        >
+          <Trash2 size={16} />
+          Delete
+        </button>
+        <button
+          onClick={() => setSelectedIds(new Set())}
+          className="text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          Clear
+        </button>
+      </div>
+    </div>
+  );
+
   if (viewType === "list") {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-center px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100">
+          <div className="w-10 flex items-center justify-center">
+            <input
+              type="checkbox"
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              checked={
+                selectedIds.size === documents.length && documents.length > 0
+              }
+              onChange={toggleSelectAll}
+            />
+          </div>
           <div className="w-10"></div>
           <div className="flex-1">Name</div>
           <div className="w-40">Category</div>
@@ -203,10 +344,98 @@ export default function DocumentGrid({
           <div className="w-32">Source</div>
           <div className="w-10 text-right">Actions</div>
         </div>
-        {documents.map((doc) => (
+        {documents.map((doc) => {
+          const { icon: Icon, color, bg } = getFileIcon(doc.name);
+          const isSelected = selectedIds.has(doc.id);
+          return (
+            <div
+              key={doc.id}
+              className={`group flex items-center rounded-lg border p-4 cursor-pointer transition-all duration-200 relative
+                ${
+                  isSelected
+                    ? "bg-blue-50/50 border-blue-500/50 shadow-sm"
+                    : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30"
+                }`}
+              style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
+              onClick={() => {
+                if (renamingId !== doc.id) {
+                  onPreview(doc);
+                }
+              }}
+            >
+              <div
+                className="w-10 flex items-center justify-center"
+                onClick={(e) => toggleSelect(e, doc.id)}
+              >
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  checked={isSelected}
+                  onChange={() => {}} // Handled by div click
+                />
+              </div>
+
+              <div className="w-10">
+                <div
+                  className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color}`}
+                >
+                  <Icon size={16} />
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0 pr-4">
+                {renamingId === doc.id ? (
+                  renderRenameInput(doc)
+                ) : (
+                  <div
+                    className="text-sm font-semibold text-gray-900 truncate"
+                    title={doc.name}
+                  >
+                    {doc.name}
+                  </div>
+                )}
+              </div>
+
+              <div className="w-40">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
+                  {doc.category}
+                </span>
+              </div>
+
+              <div className="w-40 text-xs text-gray-500">
+                {format(new Date(doc.lastModified), "MMM d, yyyy")}
+              </div>
+
+              <div className="w-32 flex items-center gap-1.5 text-xs text-gray-500 capitalize">
+                <ExternalLink size={12} className="opacity-50" />
+                {doc.cloudSource}
+              </div>
+
+              <div className="w-10 flex justify-end">
+                {renderActionsMenu(doc)}
+              </div>
+            </div>
+          );
+        })}
+        {bulkActionsBar}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 relative">
+      {documents.map((doc) => {
+        const { icon: Icon, color, bg } = getFileIcon(doc.name);
+        const isSelected = selectedIds.has(doc.id);
+        return (
           <div
             key={doc.id}
-            className="group flex items-center bg-white rounded-lg border border-gray-200 p-4 cursor-pointer hover:shadow-md hover:border-blue-500/30 transition-all duration-200 relative"
+            className={`group rounded-xl border p-6 flex flex-col gap-4 cursor-pointer transition-all duration-200 relative
+              ${
+                isSelected
+                  ? "bg-blue-50/50 border-blue-500/50 shadow-lg"
+                  : "bg-white border-gray-200 hover:shadow-lg hover:border-blue-500/30"
+              }`}
             style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
             onClick={() => {
               if (renamingId !== doc.id) {
@@ -214,96 +443,55 @@ export default function DocumentGrid({
               }
             }}
           >
-            <div className="w-10">
-              <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-blue-600">
-                <File size={16} />
+            <div className="flex justify-between items-start mb-auto relative">
+              <div className="flex items-start gap-3">
+                <div className="pt-1" onClick={(e) => toggleSelect(e, doc.id)}>
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ opacity: isSelected ? 1 : undefined }}
+                    checked={isSelected}
+                    onChange={() => {}}
+                  />
+                </div>
+                <div
+                  className={`w-12 h-12 ${bg} rounded-lg flex items-center justify-center ${color}`}
+                >
+                  <Icon size={20} />
+                </div>
               </div>
+              {renderActionsMenu(doc)}
             </div>
 
-            <div className="flex-1 min-w-0 pr-4">
+            <div className="flex-1 flex flex-col gap-4">
               {renamingId === doc.id ? (
                 renderRenameInput(doc)
               ) : (
                 <div
-                  className="text-sm font-semibold text-gray-900 truncate"
+                  className="text-base font-semibold text-gray-900 truncate"
                   title={doc.name}
                 >
                   {doc.name}
                 </div>
               )}
-            </div>
 
-            <div className="w-40">
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
-                {doc.category}
-              </span>
-            </div>
-
-            <div className="w-40 text-xs text-gray-500">
-              {format(new Date(doc.lastModified), "MMM d, yyyy")}
-            </div>
-
-            <div className="w-32 flex items-center gap-1.5 text-xs text-gray-500 capitalize">
-              <ExternalLink size={12} className="opacity-50" />
-              {doc.cloudSource}
-            </div>
-
-            <div className="w-10 flex justify-end">
-              {renderActionsMenu(doc)}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {documents.map((doc) => (
-        <div
-          key={doc.id}
-          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 cursor-pointer hover:shadow-lg hover:border-blue-500/30 transition-all duration-200 relative"
-          style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
-          onClick={() => {
-            if (renamingId !== doc.id) {
-              onPreview(doc);
-            }
-          }}
-        >
-          <div className="flex justify-between items-start mb-auto relative">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-blue-600">
-              <File size={20} />
-            </div>
-            {renderActionsMenu(doc)}
-          </div>
-
-          <div className="flex-1 flex flex-col gap-4">
-            {renamingId === doc.id ? (
-              renderRenameInput(doc)
-            ) : (
-              <div
-                className="text-base font-semibold text-gray-900 truncate"
-                title={doc.name}
-              >
-                {doc.name}
+              <div className="flex flex-col gap-2 text-xs text-gray-500">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
+                  {doc.category}
+                </span>
+                <span className="mt-2 text-[10px]">
+                  Modified {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                </span>
+                <span className="flex items-center gap-1 capitalize">
+                  <ExternalLink size={12} />
+                  {doc.cloudSource}
+                </span>
               </div>
-            )}
-
-            <div className="flex flex-col gap-2 text-xs text-gray-500">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
-                {doc.category}
-              </span>
-              <span className="mt-2 text-[10px]">
-                Modified {format(new Date(doc.lastModified), "MMM d, yyyy")}
-              </span>
-              <span className="flex items-center gap-1 capitalize">
-                <ExternalLink size={12} />
-                {doc.cloudSource}
-              </span>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
+      {bulkActionsBar}
     </div>
   );
 }
