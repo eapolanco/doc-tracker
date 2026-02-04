@@ -9,7 +9,7 @@ import UploadModal from "@/components/UploadModal";
 import { RefreshCw, Upload } from "lucide-react";
 import type { Document, HistoryItem, CloudAccount, AppSettings } from "@/types";
 
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = "/api";
 
 function App() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -92,7 +92,7 @@ function App() {
     : documents;
 
   return (
-    <>
+    <div className="flex h-screen w-full overflow-hidden bg-gray-50">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -100,13 +100,11 @@ function App() {
         setSourceFilter={setSourceFilter}
       />
 
-      <main className="flex-1 overflow-hidden flex flex-col h-screen bg-gray-50">
+      <main className="flex-1 overflow-hidden flex flex-col">
         <header className="px-8 pt-8 pb-4">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {getTitle()}
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
               <p className="text-sm text-gray-500">
                 {activeTab === "docs"
                   ? `Managing ${filteredDocuments.length} documents`
@@ -149,6 +147,7 @@ function App() {
               <DocumentGrid
                 documents={filteredDocuments}
                 onPreview={setSelectedDoc}
+                onRefresh={fetchData}
               />
             )}
             {activeTab === "history" && <HistoryTimeline history={history} />}
@@ -157,7 +156,7 @@ function App() {
             )}
           </div>
 
-          <aside 
+          <aside
             className={`w-[450px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col transition-all duration-300 ease-out z-10 
               ${selectedDoc ? "mr-0 visible" : "-mr-[450px] invisible"}`}
           >
@@ -177,7 +176,7 @@ function App() {
           />
         )}
       </main>
-    </>
+    </div>
   );
 }
 

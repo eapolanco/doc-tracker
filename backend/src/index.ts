@@ -15,10 +15,17 @@ import {
   handleGoogleCallback,
   handleOneDriveCallback,
 } from "./services/cloud.js";
-import { cloudAccounts } from "./db/schema.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+const DOCUMENTS_ROOT = path.resolve(__dirname, "../../documents");
+
+// Helper to get absolute path from DB path
+const getAbsolutePath = (dbPath: string) => {
+  if (path.isAbsolute(dbPath)) return dbPath;
+  return path.join(DOCUMENTS_ROOT, dbPath);
+};
 
 const app = express();
 app.use(cors());
@@ -46,7 +53,8 @@ const upload = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /\.(pdf|doc|docx|txt|jpg|jpeg|png|xlsx|xls|pptx|md|json)$/i;
+    const allowedTypes =
+      /\.(pdf|doc|docx|txt|jpg|jpeg|png|xlsx|xls|pptx|md|json)$/i;
     if (allowedTypes.test(file.originalname)) {
       cb(null, true);
     } else {
@@ -129,24 +137,25 @@ async function scanDirectory(dir: string, category: string = "General") {
         await scanDirectory(fullPath, entry.name);
       } else {
         const stats = await fs.stat(fullPath);
-        
+        const relativePath = path
+          .relative(DOCUMENTS_ROOT, fullPath)
+          .replace(/\\/g, "/");
+
         // Find existing doc by path
         const existingDoc = await db.query.documents.findFirst({
-          where: eq(documents.path, fullPath)
+          where: eq(documents.path, relativePath),
         });
 
         if (!existingDoc) {
           const id = uuidv4();
-          await db
-            .insert(documents)
-            .values({
-              id,
-              name: entry.name,
-              category,
-              path: fullPath,
-              cloudSource: "local",
-              lastModified: stats.mtime,
-            });
+          await db.insert(documents).values({
+            id,
+            name: entry.name,
+            category,
+            path: relativePath,
+            cloudSource: "local",
+            lastModified: stats.mtime,
+          });
 
           await db.insert(documentHistory).values({
             documentId: id,
@@ -154,12 +163,15 @@ async function scanDirectory(dir: string, category: string = "General") {
             timestamp: new Date(),
             details: "Initial scan discovery",
           });
-        } else if (existingDoc.lastModified.getTime() !== stats.mtime.getTime()) {
+        } else if (
+          existingDoc.lastModified.getTime() !== stats.mtime.getTime()
+        ) {
           // Update if modified
-          await db.update(documents)
-            .set({ 
+          await db
+            .update(documents)
+            .set({
               lastModified: stats.mtime,
-              name: entry.name // In case it was renamed
+              name: entry.name, // In case it was renamed
             })
             .where(eq(documents.id, existingDoc.id));
 
@@ -167,7 +179,7 @@ async function scanDirectory(dir: string, category: string = "General") {
             documentId: existingDoc.id,
             action: "update",
             timestamp: new Date(),
-            details: `Detected local file change at ${fullPath}`,
+            details: `Detected local file change at ${relativePath}`,
           });
         }
       }
@@ -207,9 +219,98 @@ app.get("/api/documents/:id/view", async (req, res) => {
       return res.status(404).json({ error: "Document not found" });
     }
 
-    res.sendFile(doc.path);
+    const fullPath = getAbsolutePath(doc.path);
+    res.sendFile(fullPath);
   } catch (err) {
     res.status(500).json({ error: "Failed to load document" });
+  }
+});
+
+app.put("/api/documents/:id/rename", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: "New name is required" });
+    }
+
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    const oldPath = getAbsolutePath(doc.path);
+    const dir = path.dirname(oldPath);
+    const newPath = path.join(dir, name);
+    const newRelativePath = path
+      .relative(DOCUMENTS_ROOT, newPath)
+      .replace(/\\/g, "/");
+
+    // Rename file on disk
+    try {
+      await fs.rename(oldPath, newPath);
+    } catch (fsError) {
+      console.error("File system rename error:", fsError);
+      return res.status(500).json({ error: "Failed to rename file on disk" });
+    }
+
+    // Update DB
+    await db
+      .update(documents)
+      .set({
+        name: name,
+        path: newRelativePath,
+        lastModified: new Date(),
+      })
+      .where(eq(documents.id, id));
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "rename",
+      timestamp: new Date(),
+      details: `Renamed from "${doc.name}" to "${name}"`,
+    });
+
+    res.json({ success: true, name, path: newRelativePath });
+  } catch (error) {
+    console.error("Rename error:", error);
+    res.status(500).json({ error: "Failed to rename document" });
+  }
+});
+
+app.delete("/api/documents/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    // Soft delete in DB
+    await db
+      .update(documents)
+      .set({ deleted: true })
+      .where(eq(documents.id, id));
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "delete",
+      timestamp: new Date(),
+      details: `Deleted document "${doc.name}"`,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Delete error:", error);
+    res.status(500).json({ error: "Failed to delete document" });
   }
 });
 
@@ -221,8 +322,10 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
     }
 
     const category = req.body.category || "Personal";
-    const filePath = req.file.path;
     const fileName = req.file.originalname;
+    const relativePath = path
+      .relative(DOCUMENTS_ROOT, req.file.path)
+      .replace(/\\/g, "/");
 
     console.log(`Uploaded: ${fileName} to ${category}`);
 
@@ -231,7 +334,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       file: {
         name: fileName,
         category,
-        path: filePath,
+        path: relativePath,
         size: req.file.size,
       },
     });

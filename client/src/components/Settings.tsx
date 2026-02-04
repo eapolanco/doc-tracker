@@ -13,7 +13,7 @@ export default function Settings({ accounts, appSettings }: Props) {
     accounts.find((a) => a.provider === provider)?.email;
 
   const handleConnect = (provider: string) => {
-    window.location.href = `http://localhost:3001/api/auth/${provider}`;
+    window.location.href = `/api/auth/${provider}`;
   };
 
   return (
