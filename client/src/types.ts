@@ -4,6 +4,7 @@ export interface Document {
   category: string;
   path: string;
   cloudSource: string;
+  status: "valid" | "corrupted" | "missing"; // Status of the file
   lastModified: string;
   type?: "file" | "folder";
 }

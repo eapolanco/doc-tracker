@@ -21,6 +21,7 @@ import {
   Scissors,
   ArrowUp,
   ArrowDown,
+  AlertTriangle,
 } from "lucide-react";
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
@@ -533,6 +534,10 @@ export default function DocumentGrid({
               style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
               onClick={() => {
                 if (renamingId !== doc.id) {
+                  if ((doc as Document).status === "corrupted") {
+                    toast.error("This file is corrupted and cannot be opened");
+                    return;
+                  }
                   onPreview(doc);
                 }
               }}
@@ -553,7 +558,11 @@ export default function DocumentGrid({
                 <div
                   className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color}`}
                 >
-                  <Icon size={16} />
+                  {(doc as Document).status === "corrupted" ? (
+                    <AlertTriangle size={16} className="text-red-500" />
+                  ) : (
+                    <Icon size={16} />
+                  )}
                 </div>
               </div>
 
@@ -620,6 +629,10 @@ export default function DocumentGrid({
             style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
             onClick={() => {
               if (renamingId !== doc.id) {
+                if ((doc as Document).status === "corrupted") {
+                  toast.error("This file is corrupted and cannot be opened");
+                  return;
+                }
                 onPreview(doc);
               }
             }}
@@ -636,8 +649,13 @@ export default function DocumentGrid({
                   />
                 </div>
                 <div
-                  className={`w-12 h-12 ${bg} rounded-lg flex items-center justify-center ${color}`}
+                  className={`w-12 h-12 ${bg} rounded-lg flex items-center justify-center ${color} relative`}
                 >
+                  {(doc as Document).status === "corrupted" && (
+                    <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white">
+                      <AlertTriangle size={10} className="text-white" />
+                    </div>
+                  )}
                   <Icon size={20} />
                 </div>
               </div>

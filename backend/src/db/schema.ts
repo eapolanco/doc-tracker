@@ -7,6 +7,7 @@ export const documents = sqliteTable("documents", {
   category: text("category").notNull(),
   path: text("path").notNull(),
   cloudSource: text("cloud_source"), // 'google' | 'onedrive' | 'local'
+  status: text("status").default("valid"), // 'valid' | 'corrupted' | 'missing'
   lastModified: integer("last_modified", { mode: "timestamp" }).notNull(),
   deleted: integer("deleted", { mode: "boolean" }).default(false),
 });

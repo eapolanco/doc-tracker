@@ -144,6 +144,8 @@ async function scanDirectory(dir: string, category: string = "General") {
           .relative(DOCUMENTS_ROOT, fullPath)
           .replace(/\\/g, "/");
 
+        const status = stats.size === 0 ? "corrupted" : "valid";
+
         // Find existing doc by path
         const existingDoc = await db.query.documents.findFirst({
           where: eq(documents.path, relativePath),
@@ -157,6 +159,7 @@ async function scanDirectory(dir: string, category: string = "General") {
             category,
             path: relativePath,
             cloudSource: "local",
+            status: status,
             lastModified: stats.mtime,
           });
 
@@ -174,6 +177,7 @@ async function scanDirectory(dir: string, category: string = "General") {
             .update(documents)
             .set({
               lastModified: stats.mtime,
+              status: status,
               name: entry.name, // In case it was renamed
             })
             .where(eq(documents.id, existingDoc.id));
