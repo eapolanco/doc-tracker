@@ -15,6 +15,8 @@ import {
   ChevronRight,
   Home,
   ClipboardCheck,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import type {
   Document,
@@ -48,6 +50,10 @@ function App() {
   } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [sortField, setSortField] = useState<"name" | "date" | "category">(
+    "date",
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     console.log("Active Tab:", activeTab);
@@ -225,10 +231,33 @@ function App() {
       }
     });
 
-    return [...Array.from(directSubfolders.values()), ...items];
+    const allItems = [...Array.from(directSubfolders.values()), ...items];
+
+    return allItems.sort((a, b) => {
+      // Always keep folders at the top
+      if (a.type === "folder" && b.type !== "folder") return -1;
+      if (a.type !== "folder" && b.type === "folder") return 1;
+
+      const factor = sortOrder === "asc" ? 1 : -1;
+
+      if (sortField === "name") {
+        return a.name.localeCompare(b.name) * factor;
+      }
+      if (sortField === "category") {
+        return (a.category || "").localeCompare(b.category || "") * factor;
+      }
+      if (sortField === "date") {
+        return (
+          (new Date(a.lastModified).getTime() -
+            new Date(b.lastModified).getTime()) *
+          factor
+        );
+      }
+      return 0;
+    });
   };
 
-  const filteredItems = getFileSystemItems();
+  const sortedItems = getFileSystemItems();
 
   const Breadcrumbs = () => {
     const parts = currentPath ? currentPath.split("/") : [];
@@ -304,7 +333,7 @@ function App() {
               <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
               <p className="text-sm text-gray-500">
                 {activeTab === "docs"
-                  ? `Managing ${filteredItems.length} items in this view`
+                  ? `Managing ${sortedItems.length} items in this view`
                   : activeTab === "history"
                     ? "Recent changes and syncs"
                     : "Manage cloud accounts and preferences"}
@@ -329,6 +358,71 @@ function App() {
               )}
               {activeTab === "docs" && (
                 <>
+                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white">
+                    <button
+                      onClick={() => {
+                        if (sortField === "name")
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        else setSortField("name");
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        sortField === "name"
+                          ? "bg-gray-900 text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      Name
+                      {sortField === "name" &&
+                        (sortOrder === "asc" ? (
+                          <ArrowUp size={12} />
+                        ) : (
+                          <ArrowDown size={12} />
+                        ))}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (sortField === "date")
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        else setSortField("date");
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        sortField === "date"
+                          ? "bg-gray-900 text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      Date
+                      {sortField === "date" &&
+                        (sortOrder === "asc" ? (
+                          <ArrowUp size={12} />
+                        ) : (
+                          <ArrowDown size={12} />
+                        ))}
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (sortField === "category")
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        else setSortField("category");
+                      }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
+                        sortField === "category"
+                          ? "bg-gray-900 text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      Category
+                      {sortField === "category" &&
+                        (sortOrder === "asc" ? (
+                          <ArrowUp size={12} />
+                        ) : (
+                          <ArrowDown size={12} />
+                        ))}
+                    </button>
+                  </div>
+
+                  <div className="h-6 w-px bg-gray-200 mx-1" />
+
                   <div className="relative group">
                     <Search
                       size={18}
@@ -397,7 +491,7 @@ function App() {
               <div className="flex flex-col h-full">
                 <Breadcrumbs />
                 <DocumentGrid
-                  documents={filteredItems}
+                  documents={sortedItems}
                   onPreview={(item: FileSystemItem) => {
                     if (item.type === "folder") {
                       setCurrentPath(item.path);
@@ -411,6 +505,16 @@ function App() {
                   onMove={handleMove}
                   onSetClipboard={setClipboard}
                   clipboardStatus={clipboard}
+                  sortField={sortField}
+                  sortOrder={sortOrder}
+                  onSort={(field) => {
+                    if (sortField === field) {
+                      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                    } else {
+                      setSortField(field);
+                      setSortOrder("asc");
+                    }
+                  }}
                 />
               </div>
             )}

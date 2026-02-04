@@ -19,6 +19,8 @@ import {
   X,
   Copy,
   Scissors,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
@@ -35,6 +37,9 @@ interface Props {
     clipboard: { ids: string[]; type: "copy" | "move" } | null,
   ) => void;
   clipboardStatus?: { ids: string[]; type: "copy" | "move" } | null;
+  sortField?: "name" | "date" | "category";
+  sortOrder?: "asc" | "desc";
+  onSort?: (field: "name" | "date" | "category") => void;
 }
 
 const API_BASE = "/api";
@@ -106,6 +111,9 @@ export default function DocumentGrid({
   onMove,
   onSetClipboard,
   clipboardStatus,
+  sortField,
+  sortOrder,
+  onSort,
 }: Props) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -438,9 +446,42 @@ export default function DocumentGrid({
             />
           </div>
           <div className="w-10"></div>
-          <div className="flex-1">Name</div>
-          <div className="w-40">Category</div>
-          <div className="w-40">Last Modified</div>
+          <div
+            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            onClick={() => onSort?.("name")}
+          >
+            Name
+            {sortField === "name" &&
+              (sortOrder === "asc" ? (
+                <ArrowUp size={12} />
+              ) : (
+                <ArrowDown size={12} />
+              ))}
+          </div>
+          <div
+            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            onClick={() => onSort?.("category")}
+          >
+            Category
+            {sortField === "category" &&
+              (sortOrder === "asc" ? (
+                <ArrowUp size={12} />
+              ) : (
+                <ArrowDown size={12} />
+              ))}
+          </div>
+          <div
+            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            onClick={() => onSort?.("date")}
+          >
+            Last Modified
+            {sortField === "date" &&
+              (sortOrder === "asc" ? (
+                <ArrowUp size={12} />
+              ) : (
+                <ArrowDown size={12} />
+              ))}
+          </div>
           <div className="w-32">Source</div>
           <div className="w-10 text-right">Actions</div>
         </div>
