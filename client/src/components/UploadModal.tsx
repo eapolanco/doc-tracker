@@ -4,6 +4,9 @@ import { Upload, X, FolderOpen, CheckCircle, AlertCircle } from "lucide-react";
 interface Props {
   onClose: () => void;
   onUploadComplete: () => void;
+  onProgressUpdate?: (
+    progress: { total: number; current: number; fileName: string } | null,
+  ) => void;
 }
 
 const API_BASE = "/api";
@@ -21,7 +24,11 @@ const CATEGORIES = [
   "Travel",
 ];
 
-export default function UploadModal({ onClose, onUploadComplete }: Props) {
+export default function UploadModal({
+  onClose,
+  onUploadComplete,
+  onProgressUpdate,
+}: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState("Personal");
   const [uploading, setUploading] = useState(false);
@@ -45,7 +52,23 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
     const success: string[] = [];
     const failed: string[] = [];
 
+    if (onProgressUpdate) {
+      onProgressUpdate({
+        total: selectedFiles.length,
+        current: 0,
+        fileName: selectedFiles[0].name,
+      });
+    }
+
+    let current = 0;
     for (const file of selectedFiles) {
+      if (onProgressUpdate) {
+        onProgressUpdate({
+          total: selectedFiles.length,
+          current: current + 1,
+          fileName: file.name,
+        });
+      }
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -65,6 +88,7 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
         console.error("Upload error:", error);
         failed.push(file.name);
       }
+      current++;
     }
 
     setUploadStatus({ success, failed });
@@ -75,10 +99,13 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
       await fetch(`${API_BASE}/scan`, { method: "POST" });
       setTimeout(() => {
         onUploadComplete();
+        if (onProgressUpdate) onProgressUpdate(null);
         if (failed.length === 0) {
           onClose();
         }
       }, 1500);
+    } else {
+      if (onProgressUpdate) onProgressUpdate(null);
     }
   };
 

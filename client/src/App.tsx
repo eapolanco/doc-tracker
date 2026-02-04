@@ -15,8 +15,6 @@ import {
   ChevronRight,
   Home,
   ClipboardCheck,
-  ArrowUp,
-  ArrowDown,
 } from "lucide-react";
 import type {
   Document,
@@ -54,6 +52,11 @@ function App() {
     "date",
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [uploadProgress, setUploadProgress] = useState<{
+    total: number;
+    current: number;
+    fileName: string;
+  } | null>(null);
 
   useEffect(() => {
     console.log("Active Tab:", activeTab);
@@ -132,7 +135,19 @@ function App() {
       pathParts.length > 0 ? pathParts[pathParts.length - 1] : "Personal";
 
     setLoading(true);
+    setUploadProgress({
+      total: files.length,
+      current: 0,
+      fileName: files[0].name,
+    });
+
+    let current = 0;
     for (const file of files) {
+      setUploadProgress({
+        total: files.length,
+        current: current + 1,
+        fileName: file.name,
+      });
       try {
         const formData = new FormData();
         formData.append("file", file);
@@ -141,10 +156,15 @@ function App() {
       } catch (err) {
         console.error("Upload error:", err);
       }
+      current++;
     }
+
     await axios.post(`${API_BASE}/scan`);
     await fetchData();
     setLoading(false);
+
+    // Clear progress after a delay
+    setTimeout(() => setUploadProgress(null), 3000);
   };
 
   const handleDrop = (e: React.DragEvent, targetPath: string) => {
@@ -184,56 +204,66 @@ function App() {
   };
 
   const getFileSystemItems = () => {
-    const baseDocs = documents.filter((doc) => {
-      const matchesSource = sourceFilter
-        ? doc.cloudSource === sourceFilter
-        : true;
-      const matchesSearch =
-        doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        doc.category.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesSource && matchesSearch;
+    // 1. Initial filter based on source only (search is applied differently)
+    const filteredBySource = documents.filter((doc) => {
+      return sourceFilter ? doc.cloudSource === sourceFilter : true;
     });
+
+    let itemsToProcess: FileSystemItem[] = [];
 
     if (searchQuery) {
-      return baseDocs.map((doc) => ({ ...doc, type: "file" as const }));
+      // GLOBAL SEARCH: Ignore currentPath, return all matching files
+      const searchLower = searchQuery.toLowerCase();
+      itemsToProcess = filteredBySource
+        .filter((doc) => {
+          return (
+            doc.name.toLowerCase().includes(searchLower) ||
+            doc.category.toLowerCase().includes(searchLower) ||
+            doc.path.toLowerCase().includes(searchLower)
+          );
+        })
+        .map((doc) => ({ ...doc, type: "file" as const }));
+    } else {
+      // FOLDER NAVIGATION: Group by currentPath
+      const directSubfolders = new Map<string, FolderItem>();
+      const files: FileSystemItem[] = [];
+
+      filteredBySource.forEach((doc) => {
+        const relPath =
+          currentPath === ""
+            ? doc.path
+            : doc.path.startsWith(currentPath + "/")
+              ? doc.path.substring(currentPath.length + 1)
+              : null;
+
+        if (relPath === null) return;
+
+        const parts = relPath.split("/");
+        if (parts.length > 1) {
+          const folderName = parts[0];
+          if (!directSubfolders.has(folderName)) {
+            directSubfolders.set(folderName, {
+              id: `folder-${folderName}`,
+              name: folderName,
+              path:
+                currentPath === ""
+                  ? folderName
+                  : `${currentPath}/${folderName}`,
+              type: "folder",
+              cloudSource: doc.cloudSource,
+              category: "Folder",
+              lastModified: doc.lastModified,
+            });
+          }
+        } else {
+          files.push({ ...doc, type: "file" as const });
+        }
+      });
+      itemsToProcess = [...Array.from(directSubfolders.values()), ...files];
     }
 
-    const items: FileSystemItem[] = [];
-    const directSubfolders = new Map<string, FolderItem>();
-
-    baseDocs.forEach((doc) => {
-      const relPath =
-        currentPath === ""
-          ? doc.path
-          : doc.path.startsWith(currentPath + "/")
-            ? doc.path.substring(currentPath.length + 1)
-            : null;
-
-      if (relPath === null) return;
-
-      const parts = relPath.split("/");
-      if (parts.length > 1) {
-        const folderName = parts[0];
-        if (!directSubfolders.has(folderName)) {
-          directSubfolders.set(folderName, {
-            id: `folder-${folderName}`,
-            name: folderName,
-            path:
-              currentPath === "" ? folderName : `${currentPath}/${folderName}`,
-            type: "folder",
-            cloudSource: doc.cloudSource,
-            category: "Folder",
-            lastModified: doc.lastModified,
-          });
-        }
-      } else {
-        items.push({ ...doc, type: "file" as const });
-      }
-    });
-
-    const allItems = [...Array.from(directSubfolders.values()), ...items];
-
-    return allItems.sort((a, b) => {
+    // 2. Consistent Sorting for all views
+    return itemsToProcess.sort((a, b) => {
       // Always keep folders at the top
       if (a.type === "folder" && b.type !== "folder") return -1;
       if (a.type !== "folder" && b.type === "folder") return 1;
@@ -260,6 +290,26 @@ function App() {
   const sortedItems = getFileSystemItems();
 
   const Breadcrumbs = () => {
+    if (searchQuery) {
+      return (
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+            <Search size={14} className="text-blue-500" />
+            <span>Search results for</span>
+            <span className="text-gray-900 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+              "{searchQuery}"
+            </span>
+          </div>
+          <button
+            onClick={() => setSearchQuery("")}
+            className="text-[10px] font-bold text-blue-600 hover:text-blue-700 underline"
+          >
+            Clear Search
+          </button>
+        </div>
+      );
+    }
+
     const parts = currentPath ? currentPath.split("/") : [];
     return (
       <div className="flex items-center gap-2 mb-4 text-xs font-medium text-gray-500 overflow-x-auto whitespace-nowrap pb-2">
@@ -358,71 +408,6 @@ function App() {
               )}
               {activeTab === "docs" && (
                 <>
-                  <div className="flex items-center gap-1 border border-gray-200 rounded-lg p-1 bg-white">
-                    <button
-                      onClick={() => {
-                        if (sortField === "name")
-                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                        else setSortField("name");
-                      }}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-                        sortField === "name"
-                          ? "bg-gray-900 text-white"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      Name
-                      {sortField === "name" &&
-                        (sortOrder === "asc" ? (
-                          <ArrowUp size={12} />
-                        ) : (
-                          <ArrowDown size={12} />
-                        ))}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (sortField === "date")
-                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                        else setSortField("date");
-                      }}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-                        sortField === "date"
-                          ? "bg-gray-900 text-white"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      Date
-                      {sortField === "date" &&
-                        (sortOrder === "asc" ? (
-                          <ArrowUp size={12} />
-                        ) : (
-                          <ArrowDown size={12} />
-                        ))}
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (sortField === "category")
-                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                        else setSortField("category");
-                      }}
-                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-                        sortField === "category"
-                          ? "bg-gray-900 text-white"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      Category
-                      {sortField === "category" &&
-                        (sortOrder === "asc" ? (
-                          <ArrowUp size={12} />
-                        ) : (
-                          <ArrowDown size={12} />
-                        ))}
-                    </button>
-                  </div>
-
-                  <div className="h-6 w-px bg-gray-200 mx-1" />
-
                   <div className="relative group">
                     <Search
                       size={18}
@@ -541,7 +526,52 @@ function App() {
           <UploadModal
             onClose={() => setShowUploadModal(false)}
             onUploadComplete={fetchData}
+            onProgressUpdate={setUploadProgress}
           />
+        )}
+
+        {/* Global Upload Progress Bar */}
+        {uploadProgress && (
+          <div className="fixed bottom-6 right-6 w-96 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl z-2000 p-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {uploadProgress.current === uploadProgress.total
+                    ? "Upload Complete"
+                    : `Uploading ${uploadProgress.total} files...`}
+                </h3>
+                <p className="text-xs text-gray-500 truncate mt-0.5">
+                  {uploadProgress.fileName}
+                </p>
+              </div>
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                {Math.round(
+                  (uploadProgress.current / uploadProgress.total) * 100,
+                )}
+                %
+              </span>
+            </div>
+
+            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-linear-to-r from-blue-500 to-indigo-600 transition-all duration-300 ease-out"
+                style={{
+                  width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+                }}
+              />
+            </div>
+
+            <div className="mt-3 flex justify-between items-center text-[10px] text-gray-400 font-medium">
+              <span>
+                {uploadProgress.current} of {uploadProgress.total} processed
+              </span>
+              {uploadProgress.current === uploadProgress.total && (
+                <span className="flex items-center gap-1 text-green-600">
+                  <ClipboardCheck size={10} /> Syncing directory...
+                </span>
+              )}
+            </div>
+          </div>
         )}
       </main>
     </div>
