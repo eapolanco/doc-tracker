@@ -14,6 +14,7 @@ import {
   Search,
   ChevronRight,
   Home,
+  ClipboardCheck,
 } from "lucide-react";
 import type {
   Document,
@@ -41,6 +42,12 @@ function App() {
   const [viewType, setViewType] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPath, setCurrentPath] = useState("");
+  const [clipboard, setClipboard] = useState<{
+    ids: string[];
+    type: "copy" | "move";
+  } | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     console.log("Active Tab:", activeTab);
@@ -67,6 +74,34 @@ function App() {
     }
   };
 
+  const handleMove = async (ids: string[], targetPath: string) => {
+    try {
+      setLoading(true);
+      await axios.post(`${API_BASE}/documents/move`, { ids, targetPath });
+      await fetchData();
+      setClipboard(null);
+    } catch (err) {
+      console.error("Move error:", err);
+      alert("Failed to move documents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopy = async (ids: string[], targetPath: string) => {
+    try {
+      setLoading(true);
+      await axios.post(`${API_BASE}/documents/copy`, { ids, targetPath });
+      await fetchData();
+      setClipboard(null);
+    } catch (err) {
+      console.error("Copy error:", err);
+      alert("Failed to copy documents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleScan = async () => {
     try {
       setLoading(true);
@@ -76,6 +111,43 @@ function App() {
       console.error("Error scanning:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGlobalDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    const pathParts = currentPath.split("/").filter(Boolean);
+    const targetCategory =
+      pathParts.length > 0 ? pathParts[pathParts.length - 1] : "Personal";
+
+    setLoading(true);
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("category", targetCategory);
+        await axios.post(`${API_BASE}/upload`, formData);
+      } catch (err) {
+        console.error("Upload error:", err);
+      }
+    }
+    await axios.post(`${API_BASE}/scan`);
+    await fetchData();
+    setLoading(false);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetPath: string) => {
+    e.preventDefault();
+    setDropTargetId(null);
+    const data = e.dataTransfer.getData("application/doc-tracker-ids");
+    if (data) {
+      const ids = JSON.parse(data);
+      handleMove(ids, targetPath);
     }
   };
 
@@ -164,7 +236,17 @@ function App() {
       <div className="flex items-center gap-2 mb-4 text-xs font-medium text-gray-500 overflow-x-auto whitespace-nowrap pb-2">
         <button
           onClick={() => setCurrentPath("")}
-          className="flex items-center gap-1 hover:text-blue-600 transition-colors"
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDropTargetId("root");
+          }}
+          onDragLeave={() => setDropTargetId(null)}
+          onDrop={(e) => handleDrop(e, "")}
+          className={`flex items-center gap-1 transition-colors ${
+            dropTargetId === "root"
+              ? "text-blue-600 scale-110 font-bold"
+              : "hover:text-blue-600"
+          }`}
         >
           <Home size={14} />
           <span>Root</span>
@@ -176,7 +258,17 @@ function App() {
               <ChevronRight size={12} className="opacity-50" />
               <button
                 onClick={() => setCurrentPath(path)}
-                className="hover:text-blue-600 transition-colors"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDropTargetId(path);
+                }}
+                onDragLeave={() => setDropTargetId(null)}
+                onDrop={(e) => handleDrop(e, path)}
+                className={`transition-colors ${
+                  dropTargetId === path
+                    ? "text-blue-600 scale-110 font-bold"
+                    : "hover:text-blue-600"
+                }`}
               >
                 {part}
               </button>
@@ -188,7 +280,15 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+    <div
+      className={`flex h-screen w-full overflow-hidden bg-gray-50 transition-colors ${dragOver ? "bg-blue-50/50 outline-2 outline-dashed outline-blue-500 -outline-offset-2" : ""}`}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleGlobalDrop}
+    >
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -212,6 +312,21 @@ function App() {
             </div>
 
             <div className="flex gap-3 items-center">
+              {clipboard && (
+                <button
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                  onClick={() => {
+                    if (clipboard.type === "copy") {
+                      handleCopy(clipboard.ids, currentPath);
+                    } else {
+                      handleMove(clipboard.ids, currentPath);
+                    }
+                  }}
+                >
+                  <ClipboardCheck size={16} />
+                  Paste Here ({clipboard.ids.length})
+                </button>
+              )}
               {activeTab === "docs" && (
                 <>
                   <div className="relative group">
@@ -293,6 +408,9 @@ function App() {
                   onRefresh={fetchData}
                   viewType={viewType}
                   isSearching={searchQuery.length > 0}
+                  onMove={handleMove}
+                  onSetClipboard={setClipboard}
+                  clipboardStatus={clipboard}
                 />
               </div>
             )}

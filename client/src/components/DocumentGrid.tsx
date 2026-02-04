@@ -17,6 +17,8 @@ import {
   Download,
   Check,
   X,
+  Copy,
+  Scissors,
 } from "lucide-react";
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
@@ -28,6 +30,11 @@ interface Props {
   onRefresh: () => void;
   viewType: "grid" | "list";
   isSearching: boolean;
+  onMove?: (ids: string[], targetPath: string) => void;
+  onSetClipboard?: (
+    clipboard: { ids: string[]; type: "copy" | "move" } | null,
+  ) => void;
+  clipboardStatus?: { ids: string[]; type: "copy" | "move" } | null;
 }
 
 const API_BASE = "/api";
@@ -90,18 +97,21 @@ const getFileIcon = (item: FileSystemItem) => {
       return { icon: File, color: "text-blue-600", bg: "bg-blue-50" };
   }
 };
-
 export default function DocumentGrid({
   documents,
   onPreview,
   onRefresh,
   viewType,
   isSearching,
+  onMove,
+  onSetClipboard,
+  clipboardStatus,
 }: Props) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -134,10 +144,42 @@ export default function DocumentGrid({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === documents.length) {
+    if (
+      selectedIds.size === documents.filter((d) => d.type !== "folder").length
+    ) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(documents.map((doc) => doc.id)));
+      setSelectedIds(
+        new Set(
+          documents.filter((d) => d.type !== "folder").map((doc) => doc.id),
+        ),
+      );
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    const ids = selectedIds.has(id) ? Array.from(selectedIds) : [id];
+    e.dataTransfer.setData("application/doc-tracker-ids", JSON.stringify(ids));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (
+    e: React.DragEvent,
+    id: string,
+    isFolder: boolean,
+  ) => {
+    if (isFolder) {
+      e.preventDefault();
+      setDropTargetId(id);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetPath: string) => {
+    setDropTargetId(null);
+    const data = e.dataTransfer.getData("application/doc-tracker-ids");
+    if (data && onMove) {
+      const ids = JSON.parse(data);
+      onMove(ids, targetPath);
     }
   };
 
@@ -256,6 +298,28 @@ export default function DocumentGrid({
             >
               <Edit2 size={14} /> Rename
             </div>
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onSetClipboard)
+                  onSetClipboard({ ids: [doc.id], type: "copy" });
+                setActiveMenu(null);
+              }}
+            >
+              <Copy size={14} /> Copy
+            </div>
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onSetClipboard)
+                  onSetClipboard({ ids: [doc.id], type: "move" });
+                setActiveMenu(null);
+              }}
+            >
+              <Scissors size={14} /> Cut
+            </div>
             <div className="h-px bg-gray-200 my-1" />
             <div
               className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
@@ -320,6 +384,29 @@ export default function DocumentGrid({
       </span>
       <div className="flex items-center gap-4">
         <button
+          onClick={() => {
+            if (onSetClipboard)
+              onSetClipboard({ ids: Array.from(selectedIds), type: "copy" });
+            setSelectedIds(new Set());
+          }}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <Copy size={16} />
+          Copy
+        </button>
+        <button
+          onClick={() => {
+            if (onSetClipboard)
+              onSetClipboard({ ids: Array.from(selectedIds), type: "move" });
+            setSelectedIds(new Set());
+          }}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+        >
+          <Scissors size={16} />
+          Cut
+        </button>
+        <div className="w-px h-4 bg-gray-700 mx-2" />
+        <button
           onClick={handleBulkDelete}
           className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
         >
@@ -363,12 +450,21 @@ export default function DocumentGrid({
           return (
             <div
               key={doc.id}
+              draggable={doc.type !== "folder"}
+              onDragStart={(e) => handleDragStart(e, doc.id)}
+              onDragOver={(e) =>
+                handleDragOver(e, doc.id, doc.type === "folder")
+              }
+              onDragLeave={() => setDropTargetId(null)}
+              onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
               className={`group flex items-center rounded-lg border p-4 cursor-pointer transition-all duration-200 relative
                 ${
                   isSelected
                     ? "bg-blue-50/50 border-blue-500/50 shadow-sm"
-                    : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30"
-                }`}
+                    : dropTargetId === doc.id
+                      ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02]"
+                      : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30"
+                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
               style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
               onClick={() => {
                 if (renamingId !== doc.id) {
@@ -443,12 +539,19 @@ export default function DocumentGrid({
         return (
           <div
             key={doc.id}
+            draggable={doc.type !== "folder"}
+            onDragStart={(e) => handleDragStart(e, doc.id)}
+            onDragOver={(e) => handleDragOver(e, doc.id, doc.type === "folder")}
+            onDragLeave={() => setDropTargetId(null)}
+            onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
             className={`group rounded-xl border p-6 flex flex-col gap-4 cursor-pointer transition-all duration-200 relative
               ${
                 isSelected
                   ? "bg-blue-50/50 border-blue-500/50 shadow-lg"
-                  : "bg-white border-gray-200 hover:shadow-lg hover:border-blue-500/30"
-              }`}
+                  : dropTargetId === doc.id
+                    ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02]"
+                    : "bg-white border-gray-200 hover:shadow-lg hover:border-blue-500/30"
+              } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
             style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
             onClick={() => {
               if (renamingId !== doc.id) {

@@ -25,6 +25,7 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category, setCategory] = useState("Personal");
   const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{
     success: string[];
     failed: string[];
@@ -86,8 +87,8 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1000] p-8" 
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-1000 p-8"
       onClick={onClose}
     >
       <div
@@ -97,13 +98,11 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
         <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Upload size={20} />
-            <h2 className="text-lg font-semibold">
-              Upload Documents
-            </h2>
+            <h2 className="text-lg font-semibold">Upload Documents</h2>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-2 rounded-lg text-gray-500 transition-colors flex items-center justify-center hover:bg-gray-100 hover:text-gray-900" 
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-gray-500 transition-colors flex items-center justify-center hover:bg-gray-100 hover:text-gray-900"
             title="Close"
           >
             <X size={18} />
@@ -113,9 +112,7 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
         <div className="overflow-y-auto p-6">
           {/* Category Selection */}
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">
-              Category
-            </label>
+            <label className="block text-sm font-medium mb-2">Category</label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -130,7 +127,29 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
           </div>
 
           {/* File Upload Area */}
-          <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center bg-gray-50 mb-6">
+          <div
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 mb-6 ${
+              dragOver
+                ? "border-blue-500 bg-blue-50/50 scale-[1.02]"
+                : "border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-gray-100/50"
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+              if (e.dataTransfer.files) {
+                setSelectedFiles((prev) => [
+                  ...prev,
+                  ...Array.from(e.dataTransfer.files),
+                ]);
+                setUploadStatus({ success: [], failed: [] });
+              }
+            }}
+          >
             <input
               type="file"
               id="file-upload"
@@ -143,10 +162,15 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
               htmlFor="file-upload"
               className="cursor-pointer flex flex-col items-center gap-3"
             >
-              <FolderOpen size={48} className="text-blue-600 opacity-50" />
+              <FolderOpen
+                size={48}
+                className={`transition-colors ${dragOver ? "text-blue-500" : "text-blue-600 opacity-50"}`}
+              />
               <div>
                 <p className="font-medium mb-1">
-                  Click to browse files
+                  {dragOver
+                    ? "Drop files here"
+                    : "Click to browse or drag files"}
                 </p>
                 <p className="text-xs text-gray-500">
                   Supports PDF, Word, Excel, PowerPoint, Images, and Text files
@@ -167,10 +191,10 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
                     key={index}
                     className={`flex justify-between items-center p-2 rounded-md mb-1 last:mb-0 ${
                       uploadStatus.success.includes(file.name)
-                          ? "bg-green-50"
-                          : uploadStatus.failed.includes(file.name)
-                            ? "bg-red-50"
-                            : "bg-white"
+                        ? "bg-green-50"
+                        : uploadStatus.failed.includes(file.name)
+                          ? "bg-red-50"
+                          : "bg-white"
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -185,14 +209,15 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
                         ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
-                    {!uploading && !uploadStatus.success.includes(file.name) && (
-                      <button
-                        onClick={() => removeFile(index)}
-                        className="p-1 rounded-md text-gray-500 transition-colors cursor-pointer flex items-center justify-center hover:bg-gray-100 hover:text-blue-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
+                    {!uploading &&
+                      !uploadStatus.success.includes(file.name) && (
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="p-1 rounded-md text-gray-500 transition-colors cursor-pointer flex items-center justify-center hover:bg-gray-100 hover:text-blue-600"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
                   </div>
                 ))}
               </div>
@@ -221,8 +246,8 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
             onClick={handleUpload}
             disabled={selectedFiles.length === 0 || uploading}
             className={`w-full p-3 text-sm flex items-center justify-center rounded-lg font-medium transition-all duration-200 ${
-              selectedFiles.length === 0 || uploading 
-                ? "bg-gray-900 text-white opacity-50 cursor-not-allowed" 
+              selectedFiles.length === 0 || uploading
+                ? "bg-gray-900 text-white opacity-50 cursor-not-allowed"
                 : "bg-gray-900 text-white hover:opacity-90"
             }`}
           >
@@ -234,7 +259,10 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
             ) : (
               <>
                 <Upload size={16} className="mr-2" />
-                Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file(s)` : ""}
+                Upload{" "}
+                {selectedFiles.length > 0
+                  ? `${selectedFiles.length} file(s)`
+                  : ""}
               </>
             )}
           </button>

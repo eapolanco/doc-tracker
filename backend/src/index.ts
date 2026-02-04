@@ -314,6 +314,192 @@ app.delete("/api/documents/:id", async (req, res) => {
   }
 });
 
+app.post("/api/documents/move", async (req, res) => {
+  try {
+    const { ids, targetPath } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No document IDs provided" });
+    }
+
+    const fullTargetDir = path.join(DOCUMENTS_ROOT, targetPath);
+    await fs.mkdir(fullTargetDir, { recursive: true });
+
+    // Determine category from targetPath
+    const pathParts = targetPath.split("/").filter(Boolean);
+    const targetCategory =
+      pathParts.length > 0 ? pathParts[pathParts.length - 1] : "General";
+
+    await db.transaction(async (tx) => {
+      for (const id of ids) {
+        if (id.startsWith("folder-")) continue;
+
+        const doc = await tx.query.documents.findFirst({
+          where: eq(documents.id, id),
+        });
+
+        if (doc) {
+          const oldAbsPath = getAbsolutePath(doc.path);
+          const newAbsPath = path.join(fullTargetDir, doc.name);
+          const newRelativePath = path
+            .relative(DOCUMENTS_ROOT, newAbsPath)
+            .replace(/\\/g, "/");
+
+          if (oldAbsPath !== newAbsPath) {
+            // Check for conflict at destination
+            try {
+              await fs.access(newAbsPath);
+              // If it exists, we could add a suffix or error.
+              // For simplicity and matching user request for 'duplicating', let's just rename here too if conflict.
+              let movedName = doc.name;
+              const ext = path.extname(movedName);
+              const base = path.basename(movedName, ext);
+              let counter = 1;
+              let finalAbsPath = newAbsPath;
+              while (true) {
+                try {
+                  await fs.access(finalAbsPath);
+                  movedName = `${base} (Moved ${counter})${ext}`;
+                  finalAbsPath = path.join(fullTargetDir, movedName);
+                  counter++;
+                } catch {
+                  break;
+                }
+              }
+              await fs.rename(oldAbsPath, finalAbsPath);
+              const finalRelativePath = path
+                .relative(DOCUMENTS_ROOT, finalAbsPath)
+                .replace(/\\/g, "/");
+
+              await tx
+                .update(documents)
+                .set({
+                  name: movedName,
+                  path: finalRelativePath,
+                  category: targetCategory,
+                  lastModified: new Date(),
+                })
+                .where(eq(documents.id, id));
+            } catch {
+              // No conflict, just rename
+              await fs.rename(oldAbsPath, newAbsPath);
+              await tx
+                .update(documents)
+                .set({
+                  path: newRelativePath,
+                  category: targetCategory,
+                  lastModified: new Date(),
+                })
+                .where(eq(documents.id, id));
+            }
+
+            await tx.insert(documentHistory).values({
+              documentId: id,
+              action: "move",
+              timestamp: new Date(),
+              details: `Moved from "${doc.path}" to "${newRelativePath}"`,
+            });
+          }
+        }
+      }
+    });
+
+    res.json({ success: true, count: ids.length });
+  } catch (error) {
+    console.error("Move error:", error);
+    res.status(500).json({ error: "Failed to move documents" });
+  }
+});
+
+app.post("/api/documents/copy", async (req, res) => {
+  try {
+    const { ids, targetPath } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No document IDs provided" });
+    }
+
+    const fullTargetDir = path.join(DOCUMENTS_ROOT, targetPath);
+    await fs.mkdir(fullTargetDir, { recursive: true });
+
+    // Determine category from targetPath
+    const pathParts = targetPath.split("/").filter(Boolean);
+    const targetCategory =
+      pathParts.length > 0 ? pathParts[pathParts.length - 1] : "General";
+
+    await db.transaction(async (tx) => {
+      for (const id of ids) {
+        // Skip virtual folder IDs
+        if (id.startsWith("folder-")) continue;
+
+        const doc = await tx.query.documents.findFirst({
+          where: eq(documents.id, id),
+        });
+
+        if (doc) {
+          const oldAbsPath = getAbsolutePath(doc.path);
+
+          // Verify source file exists
+          try {
+            await fs.access(oldAbsPath);
+          } catch {
+            console.warn(`Source file not found for copy: ${oldAbsPath}`);
+            continue; // Skip this one
+          }
+
+          let newName = doc.name;
+          const ext = path.extname(newName);
+          const base = path.basename(newName, ext);
+          let newAbsPath = path.join(fullTargetDir, newName);
+
+          // Handle duplicate names / same folder copy
+          let counter = 1;
+          while (true) {
+            try {
+              await fs.access(newAbsPath);
+              // If we reach here, file exists, need a new name
+              newName = `${base} (Copy ${counter})${ext}`;
+              newAbsPath = path.join(fullTargetDir, newName);
+              counter++;
+            } catch {
+              // File doesn't exist, we can use this path
+              break;
+            }
+          }
+
+          const newRelativePath = path
+            .relative(DOCUMENTS_ROOT, newAbsPath)
+            .replace(/\\/g, "/");
+
+          await fs.copyFile(oldAbsPath, newAbsPath);
+
+          const newId = uuidv4();
+          await tx.insert(documents).values({
+            id: newId,
+            name: newName,
+            category: targetCategory,
+            path: newRelativePath,
+            cloudSource: doc.cloudSource,
+            lastModified: new Date(),
+          });
+
+          await tx.insert(documentHistory).values({
+            documentId: newId,
+            action: "copy",
+            timestamp: new Date(),
+            details: `Copied from "${doc.path}" to "${newRelativePath}"`,
+          });
+        }
+      }
+    });
+
+    res.json({ success: true, count: ids.length });
+  } catch (error) {
+    console.error("Copy error:", error);
+    res.status(500).json({ error: "Failed to copy documents" });
+  }
+});
+
 app.post("/api/documents/bulk-delete", async (req, res) => {
   try {
     const { ids } = req.body;
