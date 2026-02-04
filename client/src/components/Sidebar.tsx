@@ -6,6 +6,7 @@ import {
   HardDrive,
   Cloud,
 } from "lucide-react";
+import { version } from "../../package.json";
 
 interface SidebarProps {
   activeTab: "docs" | "history" | "settings";
@@ -88,6 +89,16 @@ export default function Sidebar({
         >
           <Settings />
           Settings
+        </div>
+        <div
+          style={{
+            fontSize: "0.7rem",
+            color: "var(--text-secondary)",
+            padding: "0.5rem 0.75rem",
+            opacity: 0.5,
+          }}
+        >
+          v{version}
         </div>
       </div>
     </aside>

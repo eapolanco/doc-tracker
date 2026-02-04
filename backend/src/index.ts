@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 import { db } from "@/db/index.js";
 import { documents, documentHistory } from "@/db/schema.js";
 import { eq, desc } from "drizzle-orm";
@@ -22,6 +23,37 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const category = req.body.category || "Personal";
+    const uploadDir = path.join(__dirname, "../../documents", category);
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error as Error, uploadDir);
+    }
+  },
+  filename: (req, file, cb) => {
+    // Preserve original filename
+    cb(null, file.originalname);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /\.(pdf|doc|docx|txt|jpg|jpeg|png|xlsx|xls|pptx|md|json)$/i;
+    if (allowedTypes.test(file.originalname)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Invalid file type"));
+    }
+  },
+});
 
 // Serve static files from frontend if in production
 const frontendPath = path.join(__dirname, "../../client/dist");
@@ -163,6 +195,50 @@ app.get("/api/history", async (req, res) => {
     limit: 50,
   });
   res.json(history);
+});
+
+app.get("/api/documents/:id/view", async (req, res) => {
+  try {
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, req.params.id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    res.sendFile(doc.path);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load document" });
+  }
+});
+
+// File upload endpoint
+app.post("/api/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    const category = req.body.category || "Personal";
+    const filePath = req.file.path;
+    const fileName = req.file.originalname;
+
+    console.log(`Uploaded: ${fileName} to ${category}`);
+
+    res.json({
+      success: true,
+      file: {
+        name: fileName,
+        category,
+        path: filePath,
+        size: req.file.size,
+      },
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    res.status(500).json({ error: "Failed to upload file" });
+  }
 });
 
 app.post("/api/scan", async (req, res) => {

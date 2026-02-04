@@ -4,7 +4,9 @@ import Sidebar from "@/components/Sidebar";
 import DocumentGrid from "@/components/DocumentGrid";
 import HistoryTimeline from "@/components/HistoryTimeline";
 import Settings from "@/components/Settings";
-import { RefreshCw } from "lucide-react";
+import Visualizer from "@/components/Visualizer";
+import UploadModal from "@/components/UploadModal";
+import { RefreshCw, Upload } from "lucide-react";
 import type { Document, HistoryItem, CloudAccount, AppSettings } from "@/types";
 
 const API_BASE = "http://localhost:3001/api";
@@ -19,6 +21,13 @@ function App() {
   );
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  useEffect(() => {
+    console.log("Active Tab:", activeTab);
+    console.log("Selected Document:", selectedDoc?.name);
+  }, [activeTab, selectedDoc]);
 
   const fetchData = async () => {
     try {
@@ -92,50 +101,88 @@ function App() {
       />
 
       <main className="main-content">
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>
-              {getTitle()}
-            </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-              {activeTab === "docs"
-                ? `Managing ${filteredDocuments.length} documents`
-                : activeTab === "history"
-                  ? "Recent changes and syncs"
-                  : "Manage cloud accounts and preferences"}
-            </p>
-          </div>
-
-          <div style={{ display: "flex", gap: "0.75rem" }}>
-            {activeTab === "docs" && (
-              <button
-                className="btn-primary"
-                onClick={handleScan}
-                disabled={loading}
+        <header className="content-header">
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <div>
+              <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+                {getTitle()}
+              </h1>
+              <p
+                style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}
               >
-                <RefreshCw
-                  size={16}
-                  style={{
-                    marginRight: "0.5rem",
-                    animation: loading ? "spin 1s linear infinite" : "none",
-                  }}
-                />
-                Sync Local
-              </button>
-            )}
+                {activeTab === "docs"
+                  ? `Managing ${filteredDocuments.length} documents`
+                  : activeTab === "history"
+                    ? "Recent changes and syncs"
+                    : "Manage cloud accounts and preferences"}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              {activeTab === "docs" && (
+                <>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => setShowUploadModal(true)}
+                  >
+                    <Upload size={16} style={{ marginRight: "0.5rem" }} />
+                    Upload Files
+                  </button>
+                  <button
+                    className="btn-primary"
+                    onClick={handleScan}
+                    disabled={loading}
+                  >
+                    <RefreshCw
+                      size={16}
+                      style={{
+                        marginRight: "0.5rem",
+                        animation: loading ? "spin 1s linear infinite" : "none",
+                      }}
+                    />
+                    Sync Local
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </header>
 
-        {activeTab === "docs" && <DocumentGrid documents={filteredDocuments} />}
-        {activeTab === "history" && <HistoryTimeline history={history} />}
-        {activeTab === "settings" && (
-          <Settings accounts={accounts} appSettings={appSettings} />
+        <div className="content-wrapper">
+          <div className="view-area">
+            {activeTab === "docs" && (
+              <DocumentGrid
+                documents={filteredDocuments}
+                onPreview={setSelectedDoc}
+              />
+            )}
+            {activeTab === "history" && <HistoryTimeline history={history} />}
+            {activeTab === "settings" && (
+              <Settings accounts={accounts} appSettings={appSettings} />
+            )}
+          </div>
+
+          <aside className={`preview-panel ${selectedDoc ? "open" : ""}`}>
+            {selectedDoc && (
+              <Visualizer
+                document={selectedDoc}
+                onClose={() => setSelectedDoc(null)}
+              />
+            )}
+          </aside>
+        </div>
+
+        {showUploadModal && (
+          <UploadModal
+            onClose={() => setShowUploadModal(false)}
+            onUploadComplete={fetchData}
+          />
         )}
       </main>
 
