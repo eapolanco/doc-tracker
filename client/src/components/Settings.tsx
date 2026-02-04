@@ -110,9 +110,7 @@ export default function Settings({ accounts, appSettings }: Props) {
 
           <div className="flex justify-between items-center">
             <div>
-              <div className="font-medium text-gray-900 text-sm">
-                Dark Mode
-              </div>
+              <div className="font-medium text-gray-900 text-sm">Dark Mode</div>
               <div className="text-xs text-gray-500 mt-1">
                 Switch between light and dark themes.
               </div>
@@ -124,9 +122,7 @@ export default function Settings({ accounts, appSettings }: Props) {
 
           <div className="flex justify-between items-center">
             <div>
-              <div className="font-medium text-gray-900 text-sm">
-                Auto Scan
-              </div>
+              <div className="font-medium text-gray-900 text-sm">Auto Scan</div>
               <div className="text-xs text-gray-500 mt-1">
                 Automatically scan for local changes every hour.
               </div>

@@ -1,4 +1,6 @@
 import express from "express";
+import https from "https";
+import selfsigned from "selfsigned";
 import cors from "cors";
 import multer from "multer";
 import { db } from "@/db/index.js";
@@ -335,7 +337,11 @@ app.post("/api/documents/move", async (req, res) => {
       for (const id of ids) {
         if (id.startsWith("folder-")) continue;
 
-        const docResults = tx.select().from(documents).where(eq(documents.id, id)).all();
+        const docResults = tx
+          .select()
+          .from(documents)
+          .where(eq(documents.id, id))
+          .all();
         const doc = docResults[0];
 
         if (doc) {
@@ -549,7 +555,11 @@ app.post("/api/documents/bulk-delete", async (req, res) => {
 
     await db.transaction((tx) => {
       for (const id of ids) {
-        const docResults = tx.select().from(documents).where(eq(documents.id, id)).all();
+        const docResults = tx
+          .select()
+          .from(documents)
+          .where(eq(documents.id, id))
+          .all();
         const doc = docResults[0];
 
         if (doc) {
@@ -671,7 +681,62 @@ async function ensureDirectories() {
   }
 }
 
-app.listen(PORT, async () => {
+const TLS_ENABLED = process.env.TLS_ENABLED === "true";
+
+async function startServer() {
   await ensureDirectories();
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+
+  if (TLS_ENABLED) {
+    const keyPath =
+      process.env.SSL_KEY_PATH || path.join(__dirname, "../certs/key.pem");
+    const certPath =
+      process.env.SSL_CERT_PATH || path.join(__dirname, "../certs/cert.pem");
+
+    try {
+      let key, cert;
+
+      // Check if certs exist
+      if (fsSync.existsSync(keyPath) && fsSync.existsSync(certPath)) {
+        key = await fs.readFile(keyPath);
+        cert = await fs.readFile(certPath);
+      } else {
+        console.log(
+          "TLS enabled but no certificates found. Generating self-signed certificates...",
+        );
+        // Ensure certs directory exists
+        const certDir = path.dirname(keyPath);
+        await fs.mkdir(certDir, { recursive: true });
+
+        const attrs = [{ name: "commonName", value: "localhost" }];
+        const pems = await selfsigned.generate(attrs, { algorithm: "sha256" });
+
+        key = pems.private;
+        cert = pems.cert;
+
+        await fs.writeFile(keyPath, key);
+        await fs.writeFile(certPath, cert);
+        console.log(
+          `Self-signed certificates generated and saved to ${certDir}`,
+        );
+      }
+
+      const options = {
+        key,
+        cert,
+      };
+
+      https.createServer(options, app).listen(PORT, () => {
+        console.log(`Server running securely on https://localhost:${PORT}`);
+      });
+    } catch (err) {
+      console.error("Failed to start HTTPS server:", err);
+      process.exit(1);
+    }
+  } else {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+}
+
+startServer();
