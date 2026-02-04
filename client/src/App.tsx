@@ -100,22 +100,14 @@ function App() {
         setSourceFilter={setSourceFilter}
       />
 
-      <main className="main-content">
-        <header className="content-header">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
+      <main className="flex-1 overflow-hidden flex flex-col h-screen bg-gray-50">
+        <header className="px-8 pt-8 pb-4">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+              <h1 className="text-2xl font-bold text-gray-900">
                 {getTitle()}
               </h1>
-              <p
-                style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}
-              >
+              <p className="text-sm text-gray-500">
                 {activeTab === "docs"
                   ? `Managing ${filteredDocuments.length} documents`
                   : activeTab === "history"
@@ -124,27 +116,24 @@ function App() {
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "0.75rem" }}>
+            <div className="flex gap-3">
               {activeTab === "docs" && (
                 <>
                   <button
-                    className="btn-secondary"
+                    className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-gray-50"
                     onClick={() => setShowUploadModal(true)}
                   >
-                    <Upload size={16} style={{ marginRight: "0.5rem" }} />
+                    <Upload size={16} className="mr-2" />
                     Upload Files
                   </button>
                   <button
-                    className="btn-primary"
+                    className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90 disabled:opacity-50"
                     onClick={handleScan}
                     disabled={loading}
                   >
                     <RefreshCw
                       size={16}
-                      style={{
-                        marginRight: "0.5rem",
-                        animation: loading ? "spin 1s linear infinite" : "none",
-                      }}
+                      className={`mr-2 ${loading ? "animate-spin" : ""}`}
                     />
                     Sync Local
                   </button>
@@ -154,8 +143,8 @@ function App() {
           </div>
         </header>
 
-        <div className="content-wrapper">
-          <div className="view-area">
+        <div className="flex flex-1 overflow-hidden relative">
+          <div className="flex-1 min-w-0 overflow-y-auto px-8 pb-8 transition-all duration-200">
             {activeTab === "docs" && (
               <DocumentGrid
                 documents={filteredDocuments}
@@ -168,7 +157,10 @@ function App() {
             )}
           </div>
 
-          <aside className={`preview-panel ${selectedDoc ? "open" : ""}`}>
+          <aside 
+            className={`w-[450px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col transition-all duration-300 ease-out z-10 
+              ${selectedDoc ? "mr-0 visible" : "-mr-[450px] invisible"}`}
+          >
             {selectedDoc && (
               <Visualizer
                 document={selectedDoc}
@@ -185,13 +177,6 @@ function App() {
           />
         )}
       </main>
-
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </>
   );
 }

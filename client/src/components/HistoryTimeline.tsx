@@ -23,66 +23,31 @@ const getActionIcon = (action: string) => {
 
 export default function HistoryTimeline({ history }: Props) {
   return (
-    <div className="card">
-      <div className="history-list">
-        {history.map((item) => (
-          <div key={item.id} className="history-item">
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-              }}
-            >
-              <div className="history-dot" />
-              <div
-                style={{
-                  flex: 1,
-                  width: "1px",
-                  backgroundColor: "var(--border)",
-                  margin: "0.5rem 0",
-                }}
-              />
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="flex flex-col">
+        {history.map((item, index) => (
+          <div key={item.id} className="flex gap-4 p-4 border-b border-gray-100 last:border-0 relative">
+            <div className="flex flex-col items-center">
+              <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5" />
+              {index !== history.length - 1 && (
+                <div className="flex-1 w-px bg-gray-200 my-1" />
+              )}
             </div>
 
-            <div className="history-content">
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  marginBottom: "0.25rem",
-                }}
-              >
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "24px",
-                    height: "24px",
-                    borderRadius: "4px",
-                    backgroundColor: "var(--sidebar-bg)",
-                    color: "var(--text-secondary)",
-                  }}
-                >
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 text-gray-500">
                   {getActionIcon(item.action)}
                 </span>
-                <span className="history-title">
+                <span className="text-sm font-semibold text-gray-900">
                   {item.action.toUpperCase()}:{" "}
                   {item.document?.name || "Unknown Document"}
                 </span>
-                <span className="history-time">
+                <span className="text-xs text-gray-400 ml-auto">
                   {format(new Date(item.timestamp), "MMM d, h:mm a")}
                 </span>
               </div>
-              <p
-                style={{
-                  fontSize: "0.8125rem",
-                  color: "var(--text-secondary)",
-                  marginLeft: "2rem",
-                }}
-              >
+              <p className="text-xs text-gray-500 ml-8">
                 {item.details}
               </p>
             </div>
@@ -90,13 +55,7 @@ export default function HistoryTimeline({ history }: Props) {
         ))}
 
         {history.length === 0 && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "2rem",
-              color: "var(--text-secondary)",
-            }}
-          >
+          <div className="text-center p-8 text-gray-400">
             <p>No activity recorded yet.</p>
           </div>
         )}

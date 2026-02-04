@@ -43,41 +43,26 @@ export default function DocumentGrid({ documents, onPreview }: Props) {
   };
 
   return (
-    <div className="doc-grid">
+    <div className="grid gap-6 grid-cols-[repeat(auto-fill,minmax(280px,1fr))]">
       {documents.map((doc) => (
         <div 
           key={doc.id} 
-          className="card doc-card"
-          style={{ 
-            zIndex: activeMenu === doc.id ? 999 : 1,
-            position: 'relative'
-          }}
+          className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-4 cursor-pointer hover:shadow-lg hover:border-blue-500/30 transition-all duration-200 relative"
+          style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
           onClick={() => {
             console.log("Card clicked:", doc.name);
             onPreview(doc);
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              marginBottom: "auto",
-              position: "relative",
-            }}
-          >
-            <div
-              className="doc-icon"
-              style={{ cursor: "pointer" }}
-            >
+          <div className="flex justify-between items-start mb-auto relative">
+            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-blue-600 cursor-pointer">
               <File size={20} />
             </div>
-            <div style={{ display: "flex", gap: "0.25rem" }}>
+            <div className="flex gap-1">
               <button
-                className="btn-icon-sm"
+                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log("Preview btn clicked");
                   onPreview(doc);
                 }}
                 title="Preview"
@@ -85,14 +70,13 @@ export default function DocumentGrid({ documents, onPreview }: Props) {
                 <Eye size={16} />
               </button>
               <button
-                className="btn-icon-sm"
-                style={{
-                  backgroundColor: activeMenu === doc.id ? "var(--sidebar-bg)" : "transparent",
-                  color: activeMenu === doc.id ? "var(--text-primary)" : "var(--text-secondary)",
-                }}
+                className={`p-1.5 rounded-md transition-colors ${
+                  activeMenu === doc.id 
+                    ? "bg-gray-100 text-gray-900" 
+                    : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log("Menu toggle clicked", doc.id);
                   setActiveMenu(activeMenu === doc.id ? null : doc.id);
                 }}
               >
@@ -102,24 +86,33 @@ export default function DocumentGrid({ documents, onPreview }: Props) {
               {activeMenu === doc.id && (
                 <div
                   ref={menuRef}
-                  className="context-menu"
+                  className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[160px] z-[1000] flex flex-col p-1"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="menu-item" onClick={(e) => {
-                     e.stopPropagation();
-                     onPreview(doc);
-                     setActiveMenu(null);
-                  }}>
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+                    onClick={(e) => {
+                       e.stopPropagation();
+                       onPreview(doc);
+                       setActiveMenu(null);
+                    }}
+                  >
                     <Eye size={14} /> Preview
                   </div>
-                  <div className="menu-item" onClick={(e) => handleDownload(e, doc)}>
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+                    onClick={(e) => handleDownload(e, doc)}
+                  >
                     <Download size={14} /> Download
                   </div>
-                  <div className="menu-item disabled">
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md opacity-50 cursor-not-allowed">
                     <Edit2 size={14} /> Rename
                   </div>
-                  <div className="menu-divider" />
-                  <div className="menu-item text-red" onClick={() => handleDelete(doc)}>
+                  <div className="h-px bg-gray-200 my-1" />
+                  <div 
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
+                    onClick={() => handleDelete(doc)}
+                  >
                     <Trash2 size={14} /> Delete
                   </div>
                 </div>
@@ -129,20 +122,20 @@ export default function DocumentGrid({ documents, onPreview }: Props) {
 
           <div
             onClick={() => onPreview(doc)}
-            style={{ cursor: "pointer", flex: 1, display: "flex", flexDirection: "column", gap: "1rem" }}
+            className="cursor-pointer flex-1 flex flex-col gap-4"
           >
-            <div className="doc-name" title={doc.name}>
+            <div className="text-base font-semibold text-gray-900 truncate" title={doc.name}>
               {doc.name}
             </div>
 
-            <div className="doc-meta">
-              <span className="badge badge-blue">{doc.category}</span>
-              <span style={{ marginTop: "0.5rem" }}>
+            <div className="flex flex-col gap-2 text-xs text-gray-500">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
+                {doc.category}
+              </span>
+              <span className="mt-2">
                 Modified {format(new Date(doc.lastModified), "MMM d, yyyy")}
               </span>
-              <span
-                style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}
-              >
+              <span className="flex items-center gap-1">
                 <ExternalLink size={12} />
                 {doc.cloudSource}
               </span>
@@ -152,15 +145,8 @@ export default function DocumentGrid({ documents, onPreview }: Props) {
       ))}
 
       {documents.length === 0 && (
-        <div
-          style={{
-            gridColumn: "1/-1",
-            textAlign: "center",
-            padding: "4rem",
-            color: "var(--text-secondary)",
-          }}
-        >
-          <Folder size={48} style={{ margin: "0 auto 1rem", opacity: 0.2 }} />
+        <div className="col-span-full text-center py-16 text-gray-500">
+          <Folder size={48} className="mx-auto mb-4 opacity-20" />
           <p>No documents found. Click Sync to scan your directory.</p>
         </div>
       )}

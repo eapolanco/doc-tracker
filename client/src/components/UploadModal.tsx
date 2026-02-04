@@ -86,46 +86,40 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[1000] p-8" 
+      onClick={onClose}
+    >
       <div
-        className="modal-content upload-modal"
+        className="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+        <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <div className="flex items-center gap-3">
             <Upload size={20} />
-            <h2 style={{ fontSize: "1.125rem", fontWeight: 600 }}>
+            <h2 className="text-lg font-semibold">
               Upload Documents
             </h2>
           </div>
-          <button onClick={onClose} className="btn-icon" title="Close">
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-lg text-gray-500 transition-colors flex items-center justify-center hover:bg-gray-100 hover:text-gray-900" 
+            title="Close"
+          >
             <X size={18} />
           </button>
         </header>
 
-        <div className="modal-body" style={{ padding: "1.5rem" }}>
+        <div className="overflow-y-auto p-6">
           {/* Category Selection */}
-          <div style={{ marginBottom: "1.5rem" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-                marginBottom: "0.5rem",
-              }}
-            >
+          <div className="mb-6">
+            <label className="block text-sm font-medium mb-2">
               Category
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.5rem 0.75rem",
-                border: "1px solid var(--border)",
-                borderRadius: "0.5rem",
-                fontSize: "0.875rem",
-              }}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               {CATEGORIES.map((cat) => (
                 <option key={cat} value={cat}>
@@ -136,40 +130,25 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
           </div>
 
           {/* File Upload Area */}
-          <div
-            style={{
-              border: "2px dashed var(--border)",
-              borderRadius: "0.75rem",
-              padding: "2rem",
-              textAlign: "center",
-              backgroundColor: "var(--background)",
-              marginBottom: "1.5rem",
-            }}
-          >
+          <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center bg-gray-50 mb-6">
             <input
               type="file"
               id="file-upload"
               multiple
               onChange={handleFileSelect}
-              style={{ display: "none" }}
+              className="hidden"
               accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.xls,.pptx"
             />
             <label
               htmlFor="file-upload"
-              style={{
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "0.75rem",
-              }}
+              className="cursor-pointer flex flex-col items-center gap-3"
             >
-              <FolderOpen size={48} style={{ color: "var(--accent)", opacity: 0.5 }} />
+              <FolderOpen size={48} className="text-blue-600 opacity-50" />
               <div>
-                <p style={{ fontWeight: 500, marginBottom: "0.25rem" }}>
+                <p className="font-medium mb-1">
                   Click to browse files
                 </p>
-                <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                <p className="text-xs text-gray-500">
                   Supports PDF, Word, Excel, PowerPoint, Images, and Text files
                 </p>
               </div>
@@ -178,64 +157,38 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
 
           {/* Selected Files List */}
           {selectedFiles.length > 0 && (
-            <div style={{ marginBottom: "1.5rem" }}>
-              <p
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  marginBottom: "0.75rem",
-                }}
-              >
+            <div className="mb-6">
+              <p className="text-sm font-medium mb-3">
                 Selected Files ({selectedFiles.length})
               </p>
-              <div
-                style={{
-                  maxHeight: "200px",
-                  overflowY: "auto",
-                  border: "1px solid var(--border)",
-                  borderRadius: "0.5rem",
-                  padding: "0.5rem",
-                }}
-              >
+              <div className="max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg p-2">
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "0.5rem",
-                      borderRadius: "0.375rem",
-                      marginBottom: "0.25rem",
-                      backgroundColor:
-                        uploadStatus.success.includes(file.name)
-                          ? "#f0fdf4"
+                    className={`flex justify-between items-center p-2 rounded-md mb-1 last:mb-0 ${
+                      uploadStatus.success.includes(file.name)
+                          ? "bg-green-50"
                           : uploadStatus.failed.includes(file.name)
-                            ? "#fef2f2"
-                            : "white",
-                    }}
+                            ? "bg-red-50"
+                            : "bg-white"
+                    }`}
                   >
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <div className="flex items-center gap-2">
                       {uploadStatus.success.includes(file.name) && (
-                        <CheckCircle size={16} style={{ color: "#22c55e" }} />
+                        <CheckCircle size={16} className="text-green-500" />
                       )}
                       {uploadStatus.failed.includes(file.name) && (
-                        <AlertCircle size={16} style={{ color: "#ef4444" }} />
+                        <AlertCircle size={16} className="text-red-500" />
                       )}
-                      <span style={{ fontSize: "0.875rem" }}>{file.name}</span>
-                      <span
-                        style={{
-                          fontSize: "0.75rem",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
+                      <span className="text-sm">{file.name}</span>
+                      <span className="text-xs text-gray-500">
                         ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
                     {!uploading && !uploadStatus.success.includes(file.name) && (
                       <button
                         onClick={() => removeFile(index)}
-                        className="btn-icon-sm"
+                        className="p-1 rounded-md text-gray-500 transition-colors cursor-pointer flex items-center justify-center hover:bg-gray-100 hover:text-blue-600"
                       >
                         <X size={14} />
                       </button>
@@ -248,32 +201,16 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
 
           {/* Upload Status */}
           {uploadStatus.success.length > 0 && (
-            <div
-              style={{
-                padding: "0.75rem",
-                backgroundColor: "#f0fdf4",
-                border: "1px solid #22c55e",
-                borderRadius: "0.5rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <p style={{ fontSize: "0.875rem", color: "#15803d" }}>
+            <div className="p-3 bg-green-50 border border-green-500 rounded-lg mb-4">
+              <p className="text-sm text-green-700">
                 ✅ Successfully uploaded {uploadStatus.success.length} file(s)
               </p>
             </div>
           )}
 
           {uploadStatus.failed.length > 0 && (
-            <div
-              style={{
-                padding: "0.75rem",
-                backgroundColor: "#fef2f2",
-                border: "1px solid #ef4444",
-                borderRadius: "0.5rem",
-                marginBottom: "1rem",
-              }}
-            >
-              <p style={{ fontSize: "0.875rem", color: "#dc2626" }}>
+            <div className="p-3 bg-red-50 border border-red-500 rounded-lg mb-4">
+              <p className="text-sm text-red-700">
                 ❌ Failed to upload {uploadStatus.failed.length} file(s)
               </p>
             </div>
@@ -283,49 +220,26 @@ export default function UploadModal({ onClose, onUploadComplete }: Props) {
           <button
             onClick={handleUpload}
             disabled={selectedFiles.length === 0 || uploading}
-            className="btn-primary"
-            style={{
-              width: "100%",
-              padding: "0.75rem",
-              fontSize: "0.875rem",
-              opacity: selectedFiles.length === 0 || uploading ? 0.5 : 1,
-              cursor: selectedFiles.length === 0 || uploading ? "not-allowed" : "pointer",
-            }}
+            className={`w-full p-3 text-sm flex items-center justify-center rounded-lg font-medium transition-all duration-200 ${
+              selectedFiles.length === 0 || uploading 
+                ? "bg-gray-900 text-white opacity-50 cursor-not-allowed" 
+                : "bg-gray-900 text-white hover:opacity-90"
+            }`}
           >
             {uploading ? (
               <>
-                <div className="spinner" style={{ marginRight: "0.5rem" }} />
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
                 Uploading...
               </>
             ) : (
               <>
-                <Upload size={16} style={{ marginRight: "0.5rem" }} />
+                <Upload size={16} className="mr-2" />
                 Upload {selectedFiles.length > 0 ? `${selectedFiles.length} file(s)` : ""}
               </>
             )}
           </button>
         </div>
       </div>
-
-      <style>{`
-        .upload-modal {
-          max-width: 600px;
-        }
-        
-        .spinner {
-          width: 1rem;
-          height: 1rem;
-          border: 2px solid white;
-          border-top-color: transparent;
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          display: inline-block;
-        }
-        
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
