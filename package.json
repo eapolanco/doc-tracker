@@ -1,0 +1,11 @@
+{
+  "name": "doc-tracker-ecosystem",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../client && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd client && npm run dev",
+    "build:all": "cd client && npm run build && cd ../backend && npm run build",
+    "start": "cd backend && node dist/index.js"
+  }
+}
