@@ -6,7 +6,7 @@ import HistoryTimeline from "@/components/HistoryTimeline";
 import Settings from "@/components/Settings";
 import Visualizer from "@/components/Visualizer";
 import UploadModal from "@/components/UploadModal";
-import { RefreshCw, Upload } from "lucide-react";
+import { RefreshCw, Upload, LayoutGrid, List } from "lucide-react";
 import type { Document, HistoryItem, CloudAccount, AppSettings } from "@/types";
 
 const API_BASE = "/api";
@@ -23,6 +23,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [viewType, setViewType] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
     console.log("Active Tab:", activeTab);
@@ -135,6 +136,31 @@ function App() {
                     />
                     Sync Local
                   </button>
+
+                  <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                    <button
+                      className={`p-1.5 rounded-md transition-all ${
+                        viewType === "grid"
+                          ? "bg-gray-100 text-blue-600 shadow-sm"
+                          : "text-gray-500 hover:text-gray-900"
+                      }`}
+                      onClick={() => setViewType("grid")}
+                      title="Grid View"
+                    >
+                      <LayoutGrid size={18} />
+                    </button>
+                    <button
+                      className={`p-1.5 rounded-md transition-all ${
+                        viewType === "list"
+                          ? "bg-gray-100 text-blue-600 shadow-sm"
+                          : "text-gray-500 hover:text-gray-900"
+                      }`}
+                      onClick={() => setViewType("list")}
+                      title="List View"
+                    >
+                      <List size={18} />
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -148,6 +174,7 @@ function App() {
                 documents={filteredDocuments}
                 onPreview={setSelectedDoc}
                 onRefresh={fetchData}
+                viewType={viewType}
               />
             )}
             {activeTab === "history" && <HistoryTimeline history={history} />}
@@ -157,7 +184,7 @@ function App() {
           </div>
 
           <aside
-            className={`w-[450px] flex-shrink-0 border-l border-gray-200 bg-white flex flex-col transition-all duration-300 ease-out z-10 
+            className={`w-[450px] shrink-0 border-l border-gray-200 bg-white flex flex-col transition-all duration-300 ease-out z-10 
               ${selectedDoc ? "mr-0 visible" : "-mr-[450px] invisible"}`}
           >
             {selectedDoc && (
