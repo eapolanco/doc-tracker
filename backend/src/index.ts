@@ -6,6 +6,7 @@ import { documents, documentHistory } from "@/db/schema.js";
 import { eq, desc } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
+import fsSync from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -330,13 +331,12 @@ app.post("/api/documents/move", async (req, res) => {
     const targetCategory =
       pathParts.length > 0 ? pathParts[pathParts.length - 1] : "General";
 
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const id of ids) {
         if (id.startsWith("folder-")) continue;
 
-        const doc = await tx.query.documents.findFirst({
-          where: eq(documents.id, id),
-        });
+        const docResults = tx.select().from(documents).where(eq(documents.id, id)).all();
+        const doc = docResults[0];
 
         if (doc) {
           const oldAbsPath = getAbsolutePath(doc.path);
@@ -348,7 +348,7 @@ app.post("/api/documents/move", async (req, res) => {
           if (oldAbsPath !== newAbsPath) {
             // Check for conflict at destination
             try {
-              await fs.access(newAbsPath);
+              fsSync.accessSync(newAbsPath);
               // If it exists, we could add a suffix or error.
               // For simplicity and matching user request for 'duplicating', let's just rename here too if conflict.
               let movedName = doc.name;
@@ -358,7 +358,7 @@ app.post("/api/documents/move", async (req, res) => {
               let finalAbsPath = newAbsPath;
               while (true) {
                 try {
-                  await fs.access(finalAbsPath);
+                  fsSync.accessSync(finalAbsPath);
                   movedName = `${base} (Moved ${counter})${ext}`;
                   finalAbsPath = path.join(fullTargetDir, movedName);
                   counter++;
@@ -366,39 +366,50 @@ app.post("/api/documents/move", async (req, res) => {
                   break;
                 }
               }
-              await fs.rename(oldAbsPath, finalAbsPath);
+              fsSync.renameSync(oldAbsPath, finalAbsPath);
               const finalRelativePath = path
                 .relative(DOCUMENTS_ROOT, finalAbsPath)
                 .replace(/\\/g, "/");
 
-              await tx
-                .update(documents)
+              tx.update(documents)
                 .set({
                   name: movedName,
                   path: finalRelativePath,
                   category: targetCategory,
                   lastModified: new Date(),
                 })
-                .where(eq(documents.id, id));
+                .run();
+
+              // Use standard db.insert syntax if needed, but tx.insert is correct
+              tx.insert(documentHistory)
+                .values({
+                  documentId: id,
+                  action: "move",
+                  timestamp: new Date(),
+                  details: `Moved from "${doc.path}" to "${newRelativePath}"`,
+                })
+                .run();
             } catch {
               // No conflict, just rename
-              await fs.rename(oldAbsPath, newAbsPath);
-              await tx
-                .update(documents)
+              fsSync.renameSync(oldAbsPath, newAbsPath);
+              tx.update(documents)
                 .set({
                   path: newRelativePath,
                   category: targetCategory,
                   lastModified: new Date(),
                 })
-                .where(eq(documents.id, id));
+                .where(eq(documents.id, id))
+                .run();
             }
 
-            await tx.insert(documentHistory).values({
-              documentId: id,
-              action: "move",
-              timestamp: new Date(),
-              details: `Moved from "${doc.path}" to "${newRelativePath}"`,
-            });
+            tx.insert(documentHistory)
+              .values({
+                documentId: id,
+                action: "move",
+                timestamp: new Date(),
+                details: `Moved from "${doc.path}" to "${newRelativePath}"`,
+              })
+              .run(); // Ensure run() is called for side effects if needed, though insert/update usually return result objects in sync driver
           }
         }
       }
@@ -407,42 +418,62 @@ app.post("/api/documents/move", async (req, res) => {
     res.json({ success: true, count: ids.length });
   } catch (error) {
     console.error("Move error:", error);
-    res.status(500).json({ error: "Failed to move documents" });
+    res.status(500).json({
+      error: `Failed to move: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 });
 
 app.post("/api/documents/copy", async (req, res) => {
   try {
     const { ids, targetPath } = req.body;
+    console.log(`Copy request: ${ids?.length} items to "${targetPath}"`);
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: "No document IDs provided" });
     }
 
-    const fullTargetDir = path.join(DOCUMENTS_ROOT, targetPath);
+    // Ensure target path doesn't have leading slash for join
+    // Ensure target path defaults to empty string if undefined and remove leading slash
+    const safeTargetPath = targetPath || "";
+    const cleanTargetPath = safeTargetPath.startsWith("/")
+      ? safeTargetPath.substring(1)
+      : safeTargetPath;
+    const fullTargetDir = path.resolve(DOCUMENTS_ROOT, cleanTargetPath);
+
+    console.log(`Resolved target dir: ${fullTargetDir}`);
     await fs.mkdir(fullTargetDir, { recursive: true });
 
     // Determine category from targetPath
-    const pathParts = targetPath.split("/").filter(Boolean);
+    const pathParts = cleanTargetPath.split("/").filter(Boolean);
     const targetCategory =
       pathParts.length > 0 ? pathParts[pathParts.length - 1] : "General";
 
-    await db.transaction(async (tx) => {
+    let copyCount = 0;
+    await db.transaction((tx) => {
       for (const id of ids) {
         // Skip virtual folder IDs
-        if (id.startsWith("folder-")) continue;
+        if (typeof id !== "string" || id.startsWith("folder-")) continue;
 
-        const doc = await tx.query.documents.findFirst({
-          where: eq(documents.id, id),
-        });
+        const docResults = tx
+          .select()
+          .from(documents)
+          .where(eq(documents.id, id))
+          .all();
+        const doc = docResults[0];
+        console.log("DEBUG COPY: Retrieved doc:", doc);
 
         if (doc) {
+          if (!doc.path) {
+            throw new Error("Document path is missing or undefined");
+          }
           const oldAbsPath = getAbsolutePath(doc.path);
+          console.log(`Processing copy for ${doc.name}. Source: ${oldAbsPath}`);
 
           // Verify source file exists
           try {
-            await fs.access(oldAbsPath);
-          } catch {
+            fsSync.accessSync(oldAbsPath);
+          } catch (err) {
             console.warn(`Source file not found for copy: ${oldAbsPath}`);
             continue; // Skip this one
           }
@@ -450,16 +481,16 @@ app.post("/api/documents/copy", async (req, res) => {
           let newName = doc.name;
           const ext = path.extname(newName);
           const base = path.basename(newName, ext);
-          let newAbsPath = path.join(fullTargetDir, newName);
+          let newAbsPath = path.resolve(fullTargetDir, newName);
 
           // Handle duplicate names / same folder copy
           let counter = 1;
           while (true) {
             try {
-              await fs.access(newAbsPath);
+              fsSync.accessSync(newAbsPath);
               // If we reach here, file exists, need a new name
               newName = `${base} (Copy ${counter})${ext}`;
-              newAbsPath = path.join(fullTargetDir, newName);
+              newAbsPath = path.resolve(fullTargetDir, newName);
               counter++;
             } catch {
               // File doesn't exist, we can use this path
@@ -471,32 +502,40 @@ app.post("/api/documents/copy", async (req, res) => {
             .relative(DOCUMENTS_ROOT, newAbsPath)
             .replace(/\\/g, "/");
 
-          await fs.copyFile(oldAbsPath, newAbsPath);
+          console.log(`Copying ${oldAbsPath} -> ${newAbsPath}`);
+          fsSync.copyFileSync(oldAbsPath, newAbsPath);
 
           const newId = uuidv4();
-          await tx.insert(documents).values({
-            id: newId,
-            name: newName,
-            category: targetCategory,
-            path: newRelativePath,
-            cloudSource: doc.cloudSource,
-            lastModified: new Date(),
-          });
+          tx.insert(documents)
+            .values({
+              id: newId,
+              name: newName,
+              category: targetCategory,
+              path: newRelativePath,
+              cloudSource: doc.cloudSource,
+              lastModified: new Date(),
+            })
+            .run();
 
-          await tx.insert(documentHistory).values({
-            documentId: newId,
-            action: "copy",
-            timestamp: new Date(),
-            details: `Copied from "${doc.path}" to "${newRelativePath}"`,
-          });
+          tx.insert(documentHistory)
+            .values({
+              documentId: newId,
+              action: "copy",
+              timestamp: new Date(),
+              details: `Copied from "${doc.path}" to "${newRelativePath}"`,
+            })
+            .run();
+          copyCount++;
         }
       }
     });
 
-    res.json({ success: true, count: ids.length });
+    res.json({ success: true, count: copyCount });
   } catch (error) {
-    console.error("Copy error:", error);
-    res.status(500).json({ error: "Failed to copy documents" });
+    console.error("CRITICAL COPY ERROR:", error);
+    res.status(500).json({
+      error: `Failed to copy: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 });
 
@@ -508,24 +547,25 @@ app.post("/api/documents/bulk-delete", async (req, res) => {
       return res.status(400).json({ error: "No document IDs provided" });
     }
 
-    await db.transaction(async (tx) => {
+    await db.transaction((tx) => {
       for (const id of ids) {
-        const doc = await tx.query.documents.findFirst({
-          where: eq(documents.id, id),
-        });
+        const docResults = tx.select().from(documents).where(eq(documents.id, id)).all();
+        const doc = docResults[0];
 
         if (doc) {
-          await tx
-            .update(documents)
+          tx.update(documents)
             .set({ deleted: true })
-            .where(eq(documents.id, id));
+            .where(eq(documents.id, id))
+            .run();
 
-          await tx.insert(documentHistory).values({
-            documentId: id,
-            action: "delete",
-            timestamp: new Date(),
-            details: `Deleted document "${doc.name}" (Bulk)`,
-          });
+          tx.insert(documentHistory)
+            .values({
+              documentId: id,
+              action: "delete",
+              timestamp: new Date(),
+              details: `Deleted document "${doc.name}" (Bulk)`,
+            })
+            .run();
         }
       }
     });

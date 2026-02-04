@@ -16,6 +16,7 @@ import {
   Home,
   ClipboardCheck,
 } from "lucide-react";
+import { Toaster, toast } from "sonner";
 import type {
   Document,
   HistoryItem,
@@ -58,6 +59,110 @@ function App() {
     fileName: string;
   } | null>(null);
 
+  // Parse URL Parameters on Mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const idParam = params.get("id");
+    const viewIdParam = params.get("viewid");
+
+    if (viewIdParam) {
+      if (viewIdParam === "history") {
+        setActiveTab("history");
+        setSourceFilter(null);
+      } else if (viewIdParam === "settings") {
+        setActiveTab("settings");
+        setSourceFilter(null);
+      } else if (["all", "local", "onedrive", "google"].includes(viewIdParam)) {
+        setActiveTab("docs");
+        setSourceFilter(viewIdParam === "all" ? null : viewIdParam);
+      } else if (viewIdParam === "grid" || viewIdParam === "list") {
+        setViewType(viewIdParam);
+      }
+    }
+
+    if (idParam) {
+      const decodedId = decodeURIComponent(idParam);
+      // If it looks like a path (contains slashes or starts with /)
+      if (decodedId.includes("/") || decodedId.startsWith("/")) {
+        // Remove leading slash if it exists for consistent internal path matching
+        setCurrentPath(
+          decodedId.startsWith("/") ? decodedId.substring(1) : decodedId,
+        );
+      } else {
+        // Likely a document UUID, will be handled once documents load
+      }
+    }
+  }, []);
+
+  // Update URL Parameters when state changes
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    // Update viewid based on active tab and filter
+    let viewId = "";
+    if (activeTab === "history") viewId = "history";
+    else if (activeTab === "settings") viewId = "settings";
+    else {
+      if (!sourceFilter) viewId = "all";
+      else viewId = sourceFilter;
+    }
+
+    if (viewId) params.set("viewid", viewId);
+
+    // Always include viewType as well (could be a separate param or integrated)
+    // The user specifically asked for viewid=...
+    // If they want viewid to point to specific database views, we might need more.
+    // For now, let's treat viewid as the "section" and add 'view' for layout.
+    params.set("view", viewType);
+
+    // Update id based on current selection or path
+    if (selectedDoc) {
+      params.set("id", selectedDoc.id);
+    } else if (currentPath) {
+      // Prepend / to path as in user example
+      params.set("id", "/" + currentPath);
+    } else {
+      params.delete("id");
+    }
+
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({}, "", newUrl);
+  }, [activeTab, sourceFilter, currentPath, selectedDoc, viewType]);
+
+  // Handle document selection from ID after loading
+  useEffect(() => {
+    if (documents.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const idParam = params.get("id");
+      if (idParam && !idParam.includes("/") && !idParam.startsWith("/")) {
+        const doc = documents.find((d) => d.id === idParam);
+        if (doc) {
+          // 1. Set the selected document for the Visualizer
+          setSelectedDoc(doc);
+
+          // 2. Ensure we are on the "docs" tab to see it
+          if (activeTab !== "docs") {
+            setActiveTab("docs");
+          }
+
+          // 3. Set current path to the folder containing the document
+          // doc.path is something like "Finance/Taxes/doc.pdf"
+          const pathParts = doc.path.split("/");
+          if (pathParts.length > 1) {
+            const parentPath = pathParts.slice(0, -1).join("/");
+            if (currentPath !== parentPath) {
+              setCurrentPath(parentPath);
+            }
+          } else {
+            if (currentPath !== "") {
+              setCurrentPath("");
+            }
+          }
+        }
+      }
+    }
+  }, [documents, activeTab, currentPath]);
+
   useEffect(() => {
     console.log("Active Tab:", activeTab);
     console.log("Selected Document:", selectedDoc?.name);
@@ -91,7 +196,11 @@ function App() {
       setClipboard(null);
     } catch (err) {
       console.error("Move error:", err);
-      alert("Failed to move documents");
+      let msg = "Failed to move documents";
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        msg = err.response.data.error;
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -105,7 +214,11 @@ function App() {
       setClipboard(null);
     } catch (err) {
       console.error("Copy error:", err);
-      alert("Failed to copy documents");
+      let msg = "Failed to copy documents";
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        msg = err.response.data.error;
+      }
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -368,6 +481,7 @@ function App() {
       onDragLeave={() => setDragOver(false)}
       onDrop={handleGlobalDrop}
     >
+      <Toaster position="top-right" richColors closeButton />
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}

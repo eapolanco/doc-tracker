@@ -25,6 +25,8 @@ import {
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
 import axios from "axios";
+import { toast } from "sonner";
+import ConfirmModal from "./ConfirmModal";
 
 interface Props {
   documents: FileSystemItem[];
@@ -120,6 +122,17 @@ export default function DocumentGrid({
   const [renameValue, setRenameValue] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -192,20 +205,24 @@ export default function DocumentGrid({
   };
 
   const handleBulkDelete = async () => {
-    if (
-      confirm(`Are you sure you want to delete ${selectedIds.size} documents?`)
-    ) {
-      try {
-        await axios.post(`${API_BASE}/documents/bulk-delete`, {
-          ids: Array.from(selectedIds),
-        });
-        onRefresh();
-        setSelectedIds(new Set());
-      } catch (err) {
-        console.error("Failed to delete documents", err);
-        alert("Failed to delete documents");
-      }
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Delete Multiple Documents",
+      message: `Are you sure you want to delete ${selectedIds.size} documents? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await axios.post(`${API_BASE}/documents/bulk-delete`, {
+            ids: Array.from(selectedIds),
+          });
+          toast.success(`Successfully deleted ${selectedIds.size} documents`);
+          onRefresh();
+          setSelectedIds(new Set());
+        } catch (err) {
+          console.error("Failed to delete documents", err);
+          toast.error("Failed to delete documents");
+        }
+      },
+    });
   };
 
   const handleDownload = (e: React.MouseEvent, doc: Document) => {
@@ -220,15 +237,21 @@ export default function DocumentGrid({
   };
 
   const handleDelete = async (doc: Document) => {
-    if (confirm(`Are you sure you want to delete ${doc.name}?`)) {
-      try {
-        await axios.delete(`${API_BASE}/documents/${doc.id}`);
-        onRefresh();
-      } catch (err) {
-        console.error("Failed to delete", err);
-        alert("Failed to delete document");
-      }
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Delete Document",
+      message: `Are you sure you want to delete "${doc.name}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_BASE}/documents/${doc.id}`);
+          toast.success("Document deleted successfully");
+          onRefresh();
+        } catch (err) {
+          console.error("Failed to delete", err);
+          toast.error("Failed to delete document");
+        }
+      },
+    });
     setActiveMenu(null);
   };
 
@@ -248,9 +271,10 @@ export default function DocumentGrid({
         name: renameValue,
       });
       onRefresh();
+      toast.success("Document renamed successfully");
     } catch (err) {
       console.error("Failed to rename", err);
-      alert("Failed to rename document");
+      toast.error("Failed to rename document");
     } finally {
       setRenamingId(null);
     }
@@ -649,6 +673,13 @@ export default function DocumentGrid({
         );
       })}
       {bulkActionsBar}
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
