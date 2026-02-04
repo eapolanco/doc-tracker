@@ -1,0 +1,31 @@
+{
+  "name": "DocTracker Dev Environment",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-vscode.vscode-typescript-next",
+        "mrmlnc.vscode-scss"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "eslint.validate": ["javascript", "typescript", "typescriptreact"]
+      }
+    }
+  },
+  "forwardPorts": [3001, 5173],
+  "containerEnv": {
+    "NODE_ENV": "development",
+    "PORT": "3001",
+    "DATABASE_URL": "/workspaces/doc-tracker/data/data.db"
+  },
+  "postCreateCommand": "npm run install:all",
+  "remoteUser": "node",
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  }
+}

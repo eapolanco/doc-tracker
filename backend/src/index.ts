@@ -150,6 +150,64 @@ app.post("/api/scan", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+
+async function ensureDirectories() {
+  const rootDir = path.join(__dirname, "../../");
+  const dataDir = path.join(rootDir, "data");
+  const documentsDir = path.join(rootDir, "documents");
+
+  const foldersToEnsure = [
+    dataDir,
+    documentsDir,
+    ...[
+      "Career",
+      "Career/Certifications",
+      "Career/Contracts",
+      "Career/CV",
+      "Education",
+      "Finance",
+      "Finance/Banking",
+      "Finance/Bills",
+      "Finance/Retirement",
+      "Finance/Taxes",
+      "Health",
+      "Health/Appointments",
+      "Health/Insurance",
+      "Health/Lab_Results",
+      "Housing",
+      "Legal",
+      "Legal/IDs",
+      "Legal/Passports",
+      "Legal/Properties",
+      "Personal",
+      "Projects",
+      "Transportation",
+      "Travel",
+    ].map((f) => path.join(documentsDir, f)),
+  ];
+
+  for (const folder of foldersToEnsure) {
+    try {
+      await fs.mkdir(folder, { recursive: true });
+      console.log(`✓ Ensured directory: ${path.relative(rootDir, folder)}`);
+    } catch (err) {
+      console.error(`× Failed to ensure directory ${folder}:`, err);
+    }
+  }
+
+  // Ensure settings.json exists if dataDir was just created
+  try {
+    await fs.access(SETTINGS_PATH);
+  } catch {
+    await fs.writeFile(
+      SETTINGS_PATH,
+      JSON.stringify({ appName: "DocTracker" }, null, 2),
+    );
+    console.log("✓ Created default settings.json");
+  }
+}
+
+app.listen(PORT, async () => {
+  await ensureDirectories();
   console.log(`Server running on http://localhost:${PORT}`);
 });
