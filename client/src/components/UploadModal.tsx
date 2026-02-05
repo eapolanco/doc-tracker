@@ -17,7 +17,7 @@ export default function UploadModal({
   onClose,
   onUploadComplete,
   onProgressUpdate,
-  defaultCategory = "Personal",
+  defaultCategory,
 }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [category] = useState(defaultCategory);
@@ -53,7 +53,7 @@ export default function UploadModal({
     try {
       const formData = new FormData();
       selectedFiles.forEach((file) => formData.append("files", file));
-      formData.append("category", category);
+      formData.append("category", category ?? "");
 
       const response = await fetch(`${API_BASE}/upload`, {
         method: "POST",
@@ -116,8 +116,7 @@ export default function UploadModal({
             <div className="flex flex-col">
               <h2 className="text-lg font-semibold">Upload Documents</h2>
               <p className="text-xs text-gray-500 font-medium tracking-tight">
-                To:{" "}
-                <span className="text-blue-600">{category || "Personal"}</span>
+                To: <span className="text-blue-600">{category || "Root"}</span>
               </p>
             </div>
           </div>

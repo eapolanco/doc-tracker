@@ -6,7 +6,7 @@ import cors from "cors";
 import multer from "multer";
 import { db } from "@/db/index.js";
 import { documents, documentHistory } from "@/db/schema.js";
-import { eq, desc, inArray, or, like } from "drizzle-orm";
+import { eq, desc, inArray, or, like, sql } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
 import fsSync from "fs";
@@ -107,6 +107,51 @@ app.post("/api/settings", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
+app.post("/api/folders", async (req, res) => {
+  try {
+    const { name, parentPath } = req.body;
+    if (!name)
+      return res.status(400).json({ error: "Folder name is required" });
+
+    const relativePath = parentPath ? `${parentPath}/${name}` : name;
+    const fullPath = path.join(DOCUMENTS_ROOT, relativePath);
+
+    // Check if it already exists
+    if (fsSync.existsSync(fullPath)) {
+      return res.status(400).json({ error: "Folder already exists on disk" });
+    }
+
+    await fs.mkdir(fullPath, { recursive: true });
+
+    // Determine category from path
+    const pathParts = relativePath.split("/").filter(Boolean);
+    const category =
+      pathParts.length > 0 ? pathParts[pathParts.length - 1] : "General";
+
+    const id = `folder-${uuidv4()}`;
+    await db.insert(documents).values({
+      id,
+      name,
+      category,
+      path: relativePath,
+      cloudSource: "local",
+      type: "folder",
+      status: "valid",
+      fileSize: null,
+      tags: "[]",
+      uploadedAt: new Date(),
+      lastModified: new Date(),
+    });
+
+    res.json({ success: true, folder: { id, name, path: relativePath } });
+  } catch (error) {
+    console.error("Create folder error:", error);
+    res.status(500).json({
+      error: `Failed to create folder: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 });
 
@@ -373,14 +418,35 @@ app.put("/api/documents/:id/rename", async (req, res) => {
     }
 
     // Update DB
-    await db
-      .update(documents)
-      .set({
-        name: name,
-        path: newRelativePath,
-        lastModified: new Date(),
-      })
-      .where(eq(documents.id, id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(documents)
+        .set({
+          name: name,
+          path: newRelativePath,
+          lastModified: new Date(),
+        })
+        .where(eq(documents.id, id));
+
+      if (doc.type === "folder") {
+        // Update all items inside this folder
+        const oldPrefix = `${doc.path}/`;
+        const newPrefix = `${newRelativePath}/`;
+
+        // We can use a raw SQL update for efficiency with prefixes or a find + loop
+        // Let's use raw SQL to replace the prefix in the path
+        await tx.run(
+          sql`UPDATE documents SET path = ${newPrefix} || SUBSTR(path, ${oldPrefix.length + 1}) WHERE path LIKE ${oldPrefix + "%"}`,
+        );
+
+        // Also update the category if needed? The system seems to use base folder name as category.
+        // Let's update category for immediate children if they match the old folder name.
+        await tx
+          .update(documents)
+          .set({ category: name })
+          .where(eq(documents.category, doc.name));
+      }
+    });
 
     await db.insert(documentHistory).values({
       documentId: id,
@@ -392,7 +458,9 @@ app.put("/api/documents/:id/rename", async (req, res) => {
     res.json({ success: true, name, path: newRelativePath });
   } catch (error) {
     console.error("Rename error:", error);
-    res.status(500).json({ error: "Failed to rename document" });
+    res.status(500).json({
+      error: `Failed to rename: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 });
 
@@ -893,48 +961,6 @@ app.post("/api/documents/copy", async (req, res) => {
   }
 });
 
-app.post("/api/documents/bulk-delete", async (req, res) => {
-  try {
-    const { ids } = req.body;
-
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: "No document IDs provided" });
-    }
-
-    await db.transaction((tx) => {
-      for (const id of ids) {
-        const docResults = tx
-          .select()
-          .from(documents)
-          .where(eq(documents.id, id))
-          .all();
-        const doc = docResults[0];
-
-        if (doc) {
-          tx.update(documents)
-            .set({ deleted: true })
-            .where(eq(documents.id, id))
-            .run();
-
-          tx.insert(documentHistory)
-            .values({
-              documentId: id,
-              action: "delete",
-              timestamp: new Date(),
-              details: `Deleted document "${doc.name}" (Bulk)`,
-            })
-            .run();
-        }
-      }
-    });
-
-    res.json({ success: true, count: ids.length });
-  } catch (error) {
-    console.error("Bulk delete error:", error);
-    res.status(500).json({ error: "Failed to delete documents" });
-  }
-});
-
 // File upload endpoint
 // File upload endpoint (Bulk)
 app.post("/api/upload", upload.array("files"), async (req, res) => {
@@ -946,8 +972,14 @@ app.post("/api/upload", upload.array("files"), async (req, res) => {
       return res.status(400).json({ error: "No files uploaded" });
     }
 
-    const category = req.body.category || "Personal";
+    let category = req.body.category;
+    if (category === undefined || category === null) {
+      category = "Personal";
+    }
+
+    console.log(`[UPLOAD] Starting upload to category: "${category}"`);
     const uploadDir = path.join(DOCUMENTS_ROOT, category);
+    console.log(`[UPLOAD] Resolved upload directory: ${uploadDir}`);
     await fs.mkdir(uploadDir, { recursive: true });
 
     const results = [];
@@ -955,8 +987,12 @@ app.post("/api/upload", upload.array("files"), async (req, res) => {
     for (const file of files) {
       try {
         const fileName = file.originalname;
+        console.log(
+          `[UPLOAD] Processing file: ${fileName} (${file.size} bytes)`,
+        );
         const encryptedBuffer = encryptBuffer(file.buffer);
         const fullPath = path.join(uploadDir, fileName);
+        console.log(`[UPLOAD] Target path: ${fullPath}`);
 
         // Write encrypted file
         await fs.writeFile(fullPath, encryptedBuffer);
@@ -1004,14 +1040,15 @@ app.post("/api/upload", upload.array("files"), async (req, res) => {
         });
       }
     }
-
     res.json({
       success: true,
       results,
     });
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({ error: "Failed to upload files" });
+    res.status(500).json({
+      error: `Failed to upload files: ${error instanceof Error ? error.message : String(error)}`,
+    });
   }
 });
 

@@ -328,63 +328,88 @@ export default function DocumentGrid({
     setActiveMenu(null);
   };
 
-  const handleDelete = async (doc: Document) => {
+  const handleDelete = async (doc: FileSystemItem) => {
     setConfirmConfig({
       isOpen: true,
-      title: "Delete Document",
-      message: `Are you sure you want to delete "${doc.name}"? This action cannot be undone.`,
+      title: doc.type === "folder" ? "Delete Folder" : "Delete Document",
+      message: `Are you sure you want to delete "${doc.name}"? ${doc.type === "folder" ? "All contents will also be moved to trash." : ""}`,
       onConfirm: async () => {
         try {
           await axios.delete(`${API_BASE}/documents/${doc.id}`);
-          toast.success("Document deleted successfully");
+          toast.success(
+            doc.type === "folder"
+              ? "Folder moved to trash"
+              : "Document moved to trash",
+          );
           onRefresh();
         } catch (err) {
           console.error("Failed to delete", err);
-          toast.error("Failed to delete document");
+          toast.error(
+            doc.type === "folder"
+              ? "Failed to delete folder"
+              : "Failed to delete document",
+          );
         }
       },
     });
     setActiveMenu(null);
   };
 
-  const handlePermanentDelete = async (doc: Document) => {
+  const handlePermanentDelete = async (doc: FileSystemItem) => {
     setConfirmConfig({
       isOpen: true,
-      title: "Permanently Delete Document",
-      message: `Are you sure you want to permanently delete "${doc.name}"? This cannot be undone.`,
+      title:
+        doc.type === "folder"
+          ? "Permanently Delete Folder"
+          : "Permanently Delete Document",
+      message: `Are you sure you want to permanently delete "${doc.name}"? This will also delete all its contents and cannot be undone.`,
       onConfirm: async () => {
         try {
           await axios.delete(`${API_BASE}/documents/${doc.id}/permanent`);
-          toast.success("Document permanently deleted");
+          toast.success(
+            doc.type === "folder"
+              ? "Folder permanently deleted"
+              : "Document permanently deleted",
+          );
           onRefresh();
         } catch (err) {
           console.error("Failed to delete", err);
-          toast.error("Failed to delete document");
+          toast.error(
+            doc.type === "folder"
+              ? "Failed to delete folder"
+              : "Failed to delete document",
+          );
         }
       },
     });
     setActiveMenu(null);
   };
 
-  const handleRestore = async (doc: Document) => {
+  const handleRestore = async (doc: FileSystemItem) => {
     try {
       await axios.post(`${API_BASE}/documents/${doc.id}/restore`);
-      toast.success("Document restored");
+      toast.success(
+        doc.type === "folder" ? "Folder restored" : "Document restored",
+      );
       onRefresh();
     } catch (err) {
       console.error("Failed to restore", err);
-      toast.error("Failed to restore document");
+      toast.error(
+        doc.type === "folder"
+          ? "Failed to restore folder"
+          : "Failed to restore document",
+      );
     }
     setActiveMenu(null);
   };
 
-  const startRename = (doc: Document) => {
+  const startRename = (doc: FileSystemItem) => {
     setRenamingId(doc.id);
     setRenameValue(doc.name);
     setActiveMenu(null);
   };
 
-  const submitRename = async (doc: Document) => {
+  const submitRename = async (doc: FileSystemItem) => {
     if (!renameValue.trim() || renameValue === doc.name) {
       setRenamingId(null);
       return;
@@ -394,17 +419,25 @@ export default function DocumentGrid({
         name: renameValue,
       });
       onRefresh();
-      toast.success("Document renamed successfully");
+      toast.success(
+        doc.type === "folder"
+          ? "Folder renamed successfully"
+          : "Document renamed successfully",
+      );
     } catch (err) {
       console.error("Failed to rename", err);
-      toast.error("Failed to rename document");
+      toast.error(
+        doc.type === "folder"
+          ? "Failed to rename folder"
+          : "Failed to rename document",
+      );
     } finally {
       setRenamingId(null);
     }
   };
 
   const renderActionsMenu = (doc: FileSystemItem) => {
-    if (doc.type === "folder") return <div className="w-8" />;
+    const isFolder = doc.type === "folder";
     const fileDoc = doc as Document;
 
     if (isTrash) {
@@ -482,19 +515,21 @@ export default function DocumentGrid({
                 setActiveMenu(null);
               }}
             >
-              <Eye size={14} /> Preview
+              <Eye size={14} /> {isFolder ? "Open" : "Preview"}
             </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
-              onClick={(e) => handleDownload(e, fileDoc)}
-            >
-              <Download size={14} /> Download
-            </div>
+            {!isFolder && (
+              <div
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+                onClick={(e) => handleDownload(e, fileDoc)}
+              >
+                <Download size={14} /> Download
+              </div>
+            )}
             <div
               className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
               onClick={(e) => {
                 e.stopPropagation();
-                startRename(fileDoc);
+                startRename(doc);
               }}
             >
               <Edit2 size={14} /> Rename
