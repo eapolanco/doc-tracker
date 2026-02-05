@@ -6,7 +6,7 @@ import cors from "cors";
 import multer from "multer";
 import { db } from "@/db/index.js";
 import { documents, documentHistory } from "@/db/schema.js";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray, or, like } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
 import fsSync from "fs";
@@ -400,6 +400,23 @@ app.delete("/api/documents/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
+    if (id.startsWith("folder-implicit-")) {
+      const folderPath = id.replace("folder-implicit-", "");
+      await db
+        .update(documents)
+        .set({ deleted: true })
+        .where(
+          or(
+            like(documents.path, `${folderPath}/%`),
+            eq(documents.path, folderPath),
+          ),
+        );
+      return res.json({
+        success: true,
+        message: "Folder items moved to trash",
+      });
+    }
+
     const doc = await db.query.documents.findFirst({
       where: eq(documents.id, id),
     });
@@ -413,6 +430,19 @@ app.delete("/api/documents/:id", async (req, res) => {
       .update(documents)
       .set({ deleted: true })
       .where(eq(documents.id, id));
+
+    // If it's a real folder record, also delete its contents
+    if (doc.type === "folder") {
+      await db
+        .update(documents)
+        .set({ deleted: true })
+        .where(
+          or(
+            like(documents.path, `${doc.path}/%`),
+            eq(documents.path, doc.path),
+          ),
+        );
+    }
 
     await db.insert(documentHistory).values({
       documentId: id,
@@ -428,6 +458,63 @@ app.delete("/api/documents/:id", async (req, res) => {
   }
 });
 
+app.post("/api/documents/bulk-delete", async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: "No document IDs provided" });
+    }
+
+    const realIds: string[] = [];
+    const folderPaths: string[] = [];
+
+    for (const id of ids) {
+      if (id.startsWith("folder-implicit-")) {
+        folderPaths.push(id.replace("folder-implicit-", ""));
+      } else if (id.startsWith("folder-")) {
+        // Need to find the path of this folder
+        const folderDoc = await db.query.documents.findFirst({
+          where: eq(documents.id, id),
+        });
+        if (folderDoc) {
+          folderPaths.push(folderDoc.path);
+          realIds.push(id);
+        }
+      } else {
+        realIds.push(id);
+      }
+    }
+
+    await db.transaction(async (tx) => {
+      // Delete real IDs
+      if (realIds.length > 0) {
+        await tx
+          .update(documents)
+          .set({ deleted: true })
+          .where(inArray(documents.id, realIds));
+      }
+
+      // Delete items inside folder paths
+      for (const folderPath of folderPaths) {
+        await tx
+          .update(documents)
+          .set({ deleted: true })
+          .where(
+            or(
+              like(documents.path, `${folderPath}/%`),
+              eq(documents.path, folderPath),
+            ),
+          );
+      }
+    });
+
+    res.json({ success: true, count: ids.length });
+  } catch (error) {
+    console.error("Bulk delete error:", error);
+    res.status(500).json({ error: "Failed to perform bulk delete" });
+  }
+});
+
 app.post("/api/documents/:id/restore", async (req, res) => {
   try {
     const { id } = req.params;
@@ -440,16 +527,30 @@ app.post("/api/documents/:id/restore", async (req, res) => {
       return res.status(404).json({ error: "Document not found" });
     }
 
-    await db
-      .update(documents)
-      .set({ deleted: false })
-      .where(eq(documents.id, id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(documents)
+        .set({ deleted: false })
+        .where(eq(documents.id, id));
+
+      if (doc.type === "folder") {
+        await tx
+          .update(documents)
+          .set({ deleted: false })
+          .where(
+            or(
+              like(documents.path, `${doc.path}/%`),
+              eq(documents.path, doc.path),
+            ),
+          );
+      }
+    });
 
     await db.insert(documentHistory).values({
       documentId: id,
       action: "restore",
       timestamp: new Date(),
-      details: `Restored document "${doc.name}" from trash`,
+      details: `Restored document "${doc.name}" ${doc.type === "folder" ? "and its contents " : ""}from trash`,
     });
 
     res.json({ success: true });
@@ -491,8 +592,30 @@ app.delete("/api/documents/:id/permanent", async (req, res) => {
     }
 
     // Delete from DB (Hard delete)
-    await db.delete(documentHistory).where(eq(documentHistory.documentId, id));
-    await db.delete(documents).where(eq(documents.id, id));
+    await db.transaction(async (tx) => {
+      if (doc.type === "folder") {
+        // Find all children IDs to clean history
+        const children = await tx.query.documents.findMany({
+          where: or(
+            like(documents.path, `${doc.path}/%`),
+            eq(documents.path, doc.path),
+          ),
+        });
+        const childIds = children.map((c) => c.id);
+
+        if (childIds.length > 0) {
+          await tx
+            .delete(documentHistory)
+            .where(inArray(documentHistory.documentId, childIds));
+          await tx.delete(documents).where(inArray(documents.id, childIds));
+        }
+      } else {
+        await tx
+          .delete(documentHistory)
+          .where(eq(documentHistory.documentId, id));
+        await tx.delete(documents).where(eq(documents.id, id));
+      }
+    });
 
     res.json({ success: true });
   } catch (error) {

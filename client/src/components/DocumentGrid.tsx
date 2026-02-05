@@ -567,12 +567,39 @@ export default function DocumentGrid({
 
   if (documents.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500">
-        <Folder size={48} className="mx-auto mb-4 opacity-20" />
+      <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center text-center text-gray-500 animate-in fade-in zoom-in duration-500">
+        <div className="w-20 h-20 rounded-3xl bg-gray-50 flex items-center justify-center mb-6 shadow-inner">
+          <Folder size={40} className="text-gray-300" />
+        </div>
         {isSearching ? (
-          <p>No documents match your search criteria.</p>
+          <>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              No matches found
+            </h3>
+            <p className="text-sm">
+              We couldn't find any documents matching your search criteria.
+            </p>
+          </>
+        ) : isTrash ? (
+          <>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              Your trash is clean
+            </h3>
+            <p className="text-sm max-w-xs">
+              Deleted documents will appear here. You can restore them or
+              permanently delete them anytime.
+            </p>
+          </>
         ) : (
-          <p>No documents found. Click Sync to scan your directory.</p>
+          <>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              Your library is empty
+            </h3>
+            <p className="text-sm max-w-xs">
+              Click the Sync button in the header to scan your local directory
+              and start tracking your documents.
+            </p>
+          </>
         )}
       </div>
     );
