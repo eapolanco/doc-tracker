@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   File,
   FileText,
@@ -815,167 +816,198 @@ export default function DocumentGrid({
   }
 
   return (
-    <div className="grid gap-6 py-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 relative">
-      {documents.map((doc) => {
-        const { icon: Icon, color, bg } = getFileIcon(doc);
-        const isSelected = selectedIds.has(doc.id);
-        const isFolder = doc.type === "folder";
-        const isNew = isRecentlyUploaded(doc.uploadedAt);
-        const isPulsing = shouldPulse(doc.uploadedAt);
+    <motion.div
+      layout
+      className="grid gap-6 py-4 grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] items-stretch relative"
+    >
+      <AnimatePresence mode="popLayout">
+        {documents.map((doc) => {
+          const { icon: Icon, color, bg } = getFileIcon(doc);
+          const isSelected = selectedIds.has(doc.id);
+          const isFolder = doc.type === "folder";
+          const isNew = isRecentlyUploaded(doc.uploadedAt);
+          const isPulsing = shouldPulse(doc.uploadedAt);
 
-        return (
-          <div
-            key={doc.id}
-            draggable={doc.type !== "folder"}
-            onDragStart={(e) => handleDragStart(e, doc.id)}
-            onDragOver={(e) => handleDragOver(e, doc.id, doc.type === "folder")}
-            onDragLeave={() => setDropTargetId(null)}
-            onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
-            className={`group rounded-2xl border p-5 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative
-              ${
-                isSelected
-                  ? "bg-blue-50/80 border-blue-500/50 shadow-md ring-1 ring-blue-500/20"
-                  : dropTargetId === doc.id
-                    ? "bg-amber-50 border-amber-500 shadow-lg scale-[1.02]"
-                    : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-xl hover:-translate-y-1"
-              } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${isPulsing ? "animate-pulse-blue border-blue-400 ring-2 ring-blue-500/10" : ""}`}
-            style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
-            onClick={() => {
-              if (renamingId !== doc.id) {
-                if ((doc as Document).status === "corrupted") {
-                  toast.error("This file is corrupted and cannot be opened");
-                  return;
-                }
-                onPreview(doc);
+          return (
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{
+                layout: { type: "spring", stiffness: 300, damping: 30 },
+                opacity: { duration: 0.2 },
+              }}
+              key={doc.id}
+              draggable={doc.type !== "folder"}
+              /* eslint-disable @typescript-eslint/no-explicit-any */
+              onDragStart={(e: any) => handleDragStart(e, doc.id)}
+              onDragOver={(e: any) =>
+                handleDragOver(e, doc.id, doc.type === "folder")
               }
-            }}
-          >
-            {/* Selection Overlay Background when Selected */}
-            {isSelected && (
-              <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
-            )}
-
-            <div className="flex justify-between items-start mb-auto relative">
-              <div className="flex items-start gap-4 w-full">
-                <div className="pt-1 " onClick={(e) => toggleSelect(e, doc.id)}>
-                  <div
-                    className={`w-5 h-5 rounded-md border transition-all duration-200 flex items-center justify-center
-                    ${isSelected ? "bg-blue-500 border-blue-500" : "border-gray-300 bg-white group-hover:border-blue-400 opacity-0 group-hover:opacity-100"}
-                   `}
-                  >
-                    {isSelected && <Check size={12} className="text-white" />}
-                  </div>
-                  {/* Hidden actual checkbox for accessibility if needed, but the div above acts as visual */}
-                  <input
-                    type="checkbox"
-                    className="hidden"
-                    checked={isSelected}
-                    onChange={() => {}}
-                  />
-                </div>
-
-                <div
-                  className={`w-14 h-14 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-transform duration-300 group-hover:scale-105`}
-                >
-                  {(doc as Document).status === "corrupted" && (
-                    <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white shadow-sm z-20">
-                      <AlertTriangle size={10} className="text-white" />
-                    </div>
-                  )}
-                  <Icon size={24} strokeWidth={1.5} />
-                </div>
-
-                <div className="ml-auto">{renderActionsMenu(doc)}</div>
-              </div>
-            </div>
-
-            <div className="flex-1 flex flex-col gap-3 relative">
-              {renamingId === doc.id ? (
-                renderRenameInput(doc as Document)
-              ) : (
-                <div className="flex flex-col gap-0.5">
-                  <div
-                    className="text-[15px] font-semibold text-gray-900 truncate leading-snug group-hover:text-blue-600 transition-colors flex items-center gap-2"
-                    title={doc.name}
-                  >
-                    <span className="truncate">{doc.name}</span>
-                    {isNew && (
-                      <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold bg-blue-600 text-white animate-in zoom-in-50 duration-300 shadow-sm shadow-blue-500/20">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11px] text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
-                    <span className="truncate max-w-[100px]">
-                      {doc.category || "Uncategorized"}
-                    </span>
-                    {doc.cloudSource && (
-                      <>
-                        <span className="w-1 h-1 rounded-full bg-gray-300" />
-                        <span className="capitalize">{doc.cloudSource}</span>
-                      </>
-                    )}
-                  </div>
-                </div>
+              onDragLeave={() => setDropTargetId(null)}
+              onDrop={(e: any) =>
+                doc.type === "folder" && handleDrop(e, doc.path)
+              }
+              /* eslint-enable @typescript-eslint/no-explicit-any */
+              className={`group rounded-3xl border p-6 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative
+                ${
+                  isSelected
+                    ? "bg-blue-50/90 border-blue-200 shadow-lg ring-2 ring-blue-500/20"
+                    : dropTargetId === doc.id
+                      ? "bg-amber-50 border-amber-500 shadow-xl scale-[1.02] z-20"
+                      : "bg-white/80 backdrop-blur-sm border-gray-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 hover:border-blue-200/50 hover:bg-white"
+                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${isPulsing ? "animate-pulse-blue border-blue-400 ring-4 ring-blue-500/10" : ""}`}
+              style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
+              onClick={() => {
+                if (renamingId !== doc.id) {
+                  if ((doc as Document).status === "corrupted") {
+                    toast.error("This file is corrupted and cannot be opened");
+                    return;
+                  }
+                  onPreview(doc);
+                }
+              }}
+            >
+              {/* Selection Overlay Background when Selected */}
+              {isSelected && (
+                <div className="absolute inset-0 bg-blue-500/5 rounded-3xl pointer-events-none" />
               )}
 
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 mt-auto">
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[10px] text-gray-400 font-medium">
-                    {format(new Date(doc.lastModified), "MMM d, yyyy")}
+              <div className="flex justify-between items-start mb-auto relative">
+                <div className="flex items-start gap-4 w-full">
+                  <div
+                    className="pt-1.5"
+                    onClick={(e) => toggleSelect(e, doc.id)}
+                  >
+                    <div
+                      className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center
+                      ${isSelected ? "bg-blue-600 border-blue-600 shadow-md shadow-blue-500/30" : "border-gray-200 bg-white group-hover:border-blue-400/50 opacity-40 group-hover:opacity-100 shadow-sm"}
+                     `}
+                    >
+                      {isSelected && <Check size={14} className="text-white" />}
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={isSelected}
+                      onChange={() => {}}
+                    />
                   </div>
-                  {doc.type === "file" && (
-                    <div className="text-[10px] text-blue-600 font-mono font-bold">
-                      {formatFileSize((doc as Document).fileSize)}
-                    </div>
-                  )}
-                </div>
 
-                <div className="flex flex-col items-end gap-1">
-                  {isFolder && (
-                    <div className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
-                      Folder
-                    </div>
-                  )}
-                  {doc.encrypted && (
-                    <div className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Lock size={10} />
-                    </div>
-                  )}
+                  <div
+                    className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3`}
+                  >
+                    <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {(doc as Document).status === "corrupted" && (
+                      <div className="absolute -top-1.5 -right-1.5 bg-red-500 rounded-full p-1 border-2 border-white shadow-md z-20 animate-bounce">
+                        <AlertTriangle size={12} className="text-white" />
+                      </div>
+                    )}
+                    <Icon size={32} strokeWidth={1.5} />
+                  </div>
+
+                  <div className="ml-auto">{renderActionsMenu(doc)}</div>
                 </div>
               </div>
 
-              {/* Tags in Grid View */}
-              {doc.tags && doc.tags !== "[]" && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {(() => {
-                    try {
-                      const tagsArray = JSON.parse(doc.tags || "[]");
-                      return tagsArray
-                        .slice(0, 3)
-                        .map((tag: string, idx: number) => (
-                          <span
-                            key={idx}
-                            className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-bold border border-blue-100"
-                          >
-                            {tag}
-                          </span>
-                        ));
-                    } catch {
-                      return null;
-                    }
-                  })()}
-                  {JSON.parse(doc.tags || "[]").length > 3 && (
-                    <span className="text-[9px] text-gray-400">
-                      +{JSON.parse(doc.tags || "[]").length - 3}
-                    </span>
-                  )}
+              <div className="flex-1 flex flex-col gap-4 relative">
+                {renamingId === doc.id ? (
+                  renderRenameInput(doc as Document)
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <div
+                      className="text-[17px] font-bold text-gray-900 truncate leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-2"
+                      title={doc.name}
+                    >
+                      <span className="truncate">{doc.name}</span>
+                      {isNew && (
+                        <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-600 text-white animate-bounce-subtle shadow-lg shadow-blue-500/30">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-[11px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span className="truncate max-w-[120px]">
+                          {doc.category || "General"}
+                        </span>
+                        {doc.cloudSource && (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400/30" />
+                            <span className="capitalize text-blue-500/80">
+                              {doc.cloudSource}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100/80 mt-auto">
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[11px] text-gray-500 font-medium">
+                      {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                    </div>
+                    {doc.type === "file" && (
+                      <div className="text-[11px] text-gray-900/40 font-mono">
+                        {formatFileSize((doc as Document).fileSize)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1.5">
+                    {isFolder ? (
+                      <div className="text-[10px] bg-amber-50 text-amber-600 border border-amber-100 font-bold px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm">
+                        Folder
+                      </div>
+                    ) : (
+                      doc.encrypted && (
+                        <div className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                          <Lock size={12} className="opacity-80" />
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
+
+                {/* Tags in Grid View */}
+                {doc.tags && doc.tags !== "[]" && (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {(() => {
+                      try {
+                        const tagsArray = JSON.parse(doc.tags || "[]");
+                        return (
+                          <>
+                            {tagsArray
+                              .slice(0, 3)
+                              .map((tag: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="px-2 py-1 rounded-lg bg-gray-50 text-gray-500 text-[10px] font-bold border border-gray-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-colors"
+                                >
+                                  #{tag}
+                                </span>
+                              ))}
+                            {tagsArray.length > 3 && (
+                              <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg">
+                                +{tagsArray.length - 3}
+                              </span>
+                            )}
+                          </>
+                        );
+                      } catch {
+                        return null;
+                      }
+                    })()}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
       {bulkActionsBar}
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
@@ -984,6 +1016,6 @@ export default function DocumentGrid({
         onConfirm={confirmConfig.onConfirm}
         onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
       />
-    </div>
+    </motion.div>
   );
 }

@@ -344,7 +344,7 @@ export default function Visualizer({ document, onClose }: Props) {
                 download
                 className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center transition-all hover:opacity-90"
               >
-                <Download size={18} className="mr-2" /> Download File Instead
+                <Download size={18} className="mr-2" /> Download File
               </a>
             </div>
           ) : (
