@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-export type ViewType = "grid" | "list";
+export type ViewType = "grid" | "list" | "compact";
 export type SortField = "name" | "date" | "category";
 export type SortOrder = "asc" | "desc";
 

@@ -36,7 +36,7 @@ interface Props {
   documents: FileSystemItem[];
   onPreview: (doc: FileSystemItem) => void;
   onRefresh: () => void;
-  viewType: "grid" | "list";
+  viewType: "grid" | "list" | "compact";
   isSearching: boolean;
   onMove?: (ids: string[], targetPath: string) => void;
   onSetClipboard?: (
@@ -736,6 +736,146 @@ export default function DocumentGrid({
       </div>
     </motion.div>
   );
+
+  if (viewType === "compact") {
+    return (
+      <div className="flex flex-col">
+        <div className="flex items-center px-4 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100/50 mb-1">
+          <div className="w-8 flex items-center justify-center">
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              checked={
+                selectedIds.size === documents.length && documents.length > 0
+              }
+              onChange={toggleSelectAll}
+            />
+          </div>
+          <div className="w-8"></div>
+          <div
+            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            onClick={() => onSort?.("name")}
+          >
+            Name
+            {sortField === "name" &&
+              (sortOrder === "asc" ? (
+                <ArrowUp size={10} />
+              ) : (
+                <ArrowDown size={10} />
+              ))}
+          </div>
+          <div className="w-20 text-right px-2">Size</div>
+          <div
+            className="w-28 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            onClick={() => onSort?.("date")}
+          >
+            Date
+            {sortField === "date" &&
+              (sortOrder === "asc" ? (
+                <ArrowUp size={10} />
+              ) : (
+                <ArrowDown size={10} />
+              ))}
+          </div>
+          <div className="w-8 text-right"></div>
+        </div>
+        {documents.map((doc) => {
+          const { icon: Icon, color, bg } = getFileIcon(doc);
+          const isSelected = selectedIds.has(doc.id);
+
+          return (
+            <div
+              key={doc.id}
+              draggable={doc.type !== "folder"}
+              onDragStart={(e) => handleDragStart(e, doc.id)}
+              onDragOver={(e) =>
+                handleDragOver(e, doc.id, doc.type === "folder")
+              }
+              onDragLeave={() => setDropTargetId(null)}
+              onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
+              className={`group flex items-center py-1 px-4 cursor-pointer transition-colors border-l-2
+                ${
+                  isSelected
+                    ? "bg-blue-50 border-blue-500"
+                    : dropTargetId === doc.id
+                      ? "bg-amber-50 border-amber-500"
+                      : "bg-white border-transparent hover:bg-gray-50 hover:border-blue-200"
+                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
+              onClick={() => {
+                if (renamingId !== doc.id) {
+                  if ((doc as Document).status === "corrupted") {
+                    toast.error("This file is corrupted and cannot be opened");
+                    return;
+                  }
+                  onPreview(doc);
+                }
+              }}
+            >
+              <div
+                className="w-8 flex items-center justify-center"
+                onClick={(e) => toggleSelect(e, doc.id)}
+              >
+                <input
+                  type="checkbox"
+                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  checked={isSelected}
+                  onChange={() => {}}
+                />
+              </div>
+
+              <div className="w-8">
+                <div
+                  className={`w-6 h-6 ${bg} rounded flex items-center justify-center ${color}`}
+                >
+                  {(doc as Document).status === "corrupted" ? (
+                    <AlertTriangle size={12} className="text-red-500" />
+                  ) : (
+                    <Icon size={12} />
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0 pr-4">
+                {renamingId === doc.id ? (
+                  renderRenameInput(doc as Document)
+                ) : (
+                  <div
+                    className="text-xs font-medium text-gray-700 truncate"
+                    title={doc.name}
+                  >
+                    {doc.name}
+                  </div>
+                )}
+              </div>
+
+              <div className="w-20 text-right px-2 text-[10px] text-gray-400 font-mono">
+                {formatFileSize((doc as Document).fileSize)}
+              </div>
+
+              <div className="w-28 text-[10px] text-gray-400">
+                {format(new Date(doc.lastModified), "MMM d, yyyy")}
+              </div>
+
+              <div className="w-8 flex justify-end">
+                {renderActionsMenu(doc)}
+              </div>
+            </div>
+          );
+        })}
+        <AnimatePresence>{bulkActionsBar}</AnimatePresence>
+        <ConfirmModal
+          isOpen={confirmConfig.isOpen}
+          title={confirmConfig.title}
+          message={confirmConfig.message}
+          onConfirm={confirmConfig.onConfirm}
+          onClose={() =>
+            setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
+          }
+        />
+      </div>
+    );
+  }
 
   if (viewType === "list") {
     return (
