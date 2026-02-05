@@ -1,5 +1,3 @@
-import { ReactNode } from "react";
-
 /**
  * Simple typed Event Bus implementation.
  * Allows features to communicate without direct dependencies.

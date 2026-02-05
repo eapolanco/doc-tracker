@@ -1,20 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import Page from "@/components/Page";
 
-interface ListViewProps {
-  arch: any;
-  model: string;
-  context?: any;
+interface Field {
+  name: string;
+  label?: string;
 }
 
-export default function ListView({ arch, model, context }: ListViewProps) {
-  const [records, setRecords] = useState<any[]>([]);
+interface ListViewArch {
+  title?: string;
+  fields?: Field[];
+  actions?: ReactNode;
+}
+
+interface ListViewProps {
+  arch: ListViewArch;
+  model: string;
+  context?: Record<string, unknown>;
+}
+
+export default function ListView({ arch, model }: ListViewProps) {
+  const [records] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // In a real implementation, this would fetch data based on the model
     // For now, we'll just simulate loading
-    setLoading(false);
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
   }, [model]);
 
   const { title, fields, actions } = arch;
@@ -29,7 +43,7 @@ export default function ListView({ arch, model, context }: ListViewProps) {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {fields?.map((field: any) => (
+                  {fields?.map((field) => (
                     <th
                       key={field.name}
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -52,9 +66,9 @@ export default function ListView({ arch, model, context }: ListViewProps) {
                 ) : (
                   records.map((record, idx) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      {fields?.map((field: any) => (
+                      {fields?.map((field) => (
                         <td key={field.name} className="px-6 py-4 text-sm">
-                          {record[field.name]}
+                          {String(record[field.name] ?? "")}
                         </td>
                       ))}
                     </tr>
