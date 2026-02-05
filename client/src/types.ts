@@ -11,6 +11,8 @@ export interface Document {
   fileSize?: number;
   tags?: string; // Stored as JSON string in DB
   encrypted?: boolean;
+  isShared?: boolean;
+  shareToken?: string;
 }
 
 export interface FolderItem {
@@ -26,6 +28,8 @@ export interface FolderItem {
   fileSize?: number;
   tags?: string;
   encrypted?: boolean;
+  isShared?: boolean;
+  shareToken?: string;
 }
 
 export type FileSystemItem = Document | FolderItem;

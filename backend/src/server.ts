@@ -1,3 +1,4 @@
+console.log("STARTING SERVER WITH LATEST CODE - V2");
 import "dotenv/config";
 import express from "express";
 import https from "https";
@@ -6,7 +7,7 @@ import cors from "cors";
 import multer from "multer";
 import { db } from "@/db/index.js";
 import { documents, documentHistory } from "@/db/schema.js";
-import { eq, desc, inArray, or, like, sql } from "drizzle-orm";
+import { eq, desc, inArray, or, like, sql, and } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
 import fsSync from "fs";
@@ -35,6 +36,8 @@ const getAbsolutePath = (dbPath: string) => {
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.get("/api/version", (req, res) => res.send("v-debug-1"));
 
 // Configure multer for file uploads
 // Use memory storage to process file (encrypt) before writing to disk
@@ -625,6 +628,130 @@ app.post("/api/documents/:id/restore", async (req, res) => {
   } catch (error) {
     console.error("Restore error:", error);
     res.status(500).json({ error: "Failed to restore document" });
+  }
+});
+
+app.post("/api/documents/:id/share", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const shareToken = uuidv4();
+
+    console.log(`[share] Generating share for doc: ${id}`);
+    await db
+      .update(documents)
+      .set({ isShared: true, shareToken })
+      .where(eq(documents.id, id));
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "update",
+      timestamp: new Date(),
+      details: "Enabled public sharing",
+    });
+
+    res.json({ success: true, shareToken });
+  } catch (error: any) {
+    const errorMsg = `[share] Error sharing document ${req.params.id}: ${error.message || error}\n`;
+    console.error(errorMsg);
+    try {
+      fsSync.appendFileSync("server_error.log", errorMsg);
+    } catch (e) {
+      console.error("Failed to write to error log", e);
+    }
+
+    res
+      .status(500)
+      .json({ error: "Failed to share document", details: error.message });
+  }
+});
+
+app.delete("/api/documents/:id/share", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db
+      .update(documents)
+      .set({ isShared: false, shareToken: null })
+      .where(eq(documents.id, id));
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "update",
+      timestamp: new Date(),
+      details: "Disabled public sharing",
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Remove share error:", error);
+    res.status(500).json({ error: "Failed to remove share" });
+  }
+});
+
+app.get("/api/share/:token", async (req, res) => {
+  try {
+    const doc = await db.query.documents.findFirst({
+      where: and(
+        eq(documents.shareToken, req.params.token),
+        eq(documents.isShared, true),
+      ),
+    });
+
+    if (!doc) {
+      return res.status(404).send("Document not found or link expired");
+    }
+
+    const fullPath = getAbsolutePath(doc.path);
+    const ext = path.extname(doc.name).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".txt": "text/plain",
+      ".md": "text/markdown",
+      ".json": "application/json",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".xlsx":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".xls": "application/vnd.ms-excel",
+      ".pptx":
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    };
+    const mimeType = mimeTypes[ext] || "application/octet-stream";
+
+    if (doc.encrypted) {
+      try {
+        const decipherStream = await getDecipherStream(fullPath);
+        res.setHeader("Content-Type", mimeType);
+        res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
+        decipherStream.pipe(res);
+        decipherStream.on("error", (err) => {
+          console.error("Public decryption stream error:", err);
+          res.end();
+        });
+      } catch (err) {
+        console.error("Public decryption error:", err);
+        res.status(500).send("Failed to decrypt shared document");
+      }
+    } else {
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
+
+      const fileStream = fsSync.createReadStream(fullPath);
+      fileStream.pipe(res);
+      fileStream.on("error", (err) => {
+        console.error("Public file stream error:", err);
+        if (!res.headersSent) {
+          res.status(500).send("Failed to load shared document");
+        }
+      });
+    }
+  } catch (err) {
+    res.status(500).send("Error loading shared document");
   }
 });
 

@@ -27,5 +27,6 @@ if (!dbPath) {
 // If it came from env var and is relative, it will be relative to CWD (which is /app/backend in docker).
 // In Docker, DATABASE_URL=/app/data/data.db (Absolute).
 
+console.log("DB PATH:", dbPath);
 const sqlite = new Database(dbPath);
 export const db = drizzle(sqlite, { schema });

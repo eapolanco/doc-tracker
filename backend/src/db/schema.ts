@@ -15,6 +15,8 @@ export const documents = sqliteTable("documents", {
   uploadedAt: integer("uploaded_at", { mode: "timestamp" }), // When file was first added
   lastModified: integer("last_modified", { mode: "timestamp" }).notNull(),
   deleted: integer("deleted", { mode: "boolean" }).default(false),
+  isShared: integer("is_shared", { mode: "boolean" }).default(false),
+  shareToken: text("share_token"),
 });
 
 export const documentHistory = sqliteTable("document_history", {

@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   RefreshCcw,
   Lock,
+  Share2,
 } from "lucide-react";
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
@@ -403,6 +404,25 @@ export default function DocumentGrid({
     setActiveMenu(null);
   };
 
+  const handleShare = async (doc: FileSystemItem) => {
+    try {
+      if (doc.isShared) {
+        await axios.delete(`${API_BASE}/documents/${doc.id}/share`);
+        toast.success("Sharing disabled");
+      } else {
+        const res = await axios.post(`${API_BASE}/documents/${doc.id}/share`);
+        const shareUrl = `${window.location.origin}/api/share/${res.data.shareToken}`;
+        await navigator.clipboard.writeText(shareUrl);
+        toast.success("Share link copied to clipboard!");
+      }
+      onRefresh();
+    } catch (err) {
+      console.error("Share error:", err);
+      toast.error("Failed to update sharing");
+    }
+    setActiveMenu(null);
+  };
+
   const startRename = (doc: FileSystemItem) => {
     setRenamingId(doc.id);
     setRenameValue(doc.name);
@@ -555,6 +575,19 @@ export default function DocumentGrid({
               }}
             >
               <Scissors size={14} /> Cut
+            </div>
+            <div
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare(doc);
+              }}
+            >
+              <Share2
+                size={14}
+                className={doc.isShared ? "text-blue-500" : ""}
+              />
+              {doc.isShared ? "Stop Sharing" : "Share"}
             </div>
             <div className="h-px bg-gray-200 my-1" />
             <div
@@ -845,6 +878,12 @@ export default function DocumentGrid({
                     title={doc.name}
                   >
                     {doc.name}
+                    {doc.isShared && (
+                      <Share2
+                        size={10}
+                        className="ml-1.5 text-blue-500 inline"
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -1009,6 +1048,12 @@ export default function DocumentGrid({
                       title={doc.name}
                     >
                       {doc.name}
+                      {doc.isShared && (
+                        <Share2
+                          size={12}
+                          className="ml-2 text-blue-500 inline"
+                        />
+                      )}
                       {isNew && (
                         <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold bg-blue-600 text-white animate-in zoom-in-50 duration-300">
                           NEW
@@ -1216,6 +1261,14 @@ export default function DocumentGrid({
                         </div>
                       )}
                       <Icon size={32} strokeWidth={1.5} />
+                      {doc.isShared && (
+                        <div className="absolute -bottom-2 -right-2 bg-blue-600 rounded-lg p-1.5 border-2 border-white dark:border-slate-800 shadow-xl z-20">
+                          <Share2
+                            size={12}
+                            className="text-white fill-white/20"
+                          />
+                        </div>
+                      )}
                     </div>
 
                     <div className="ml-auto">{renderActionsMenu(doc)}</div>
