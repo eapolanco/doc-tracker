@@ -107,16 +107,21 @@ export default function UploadModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden"
+        className="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+        <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <Upload size={20} />
+            <Upload size={20} className="dark:text-blue-400" />
             <div className="flex flex-col">
-              <h2 className="text-lg font-semibold">Upload Documents</h2>
-              <p className="text-xs text-gray-500 font-medium tracking-tight">
-                To: <span className="text-blue-600">{category || "Root"}</span>
+              <h2 className="text-lg font-semibold dark:text-white">
+                Upload Documents
+              </h2>
+              <p className="text-xs text-gray-500 font-medium tracking-tight dark:text-slate-400">
+                To:{" "}
+                <span className="text-blue-600 dark:text-blue-400">
+                  {category || "Root"}
+                </span>
               </p>
             </div>
           </div>
@@ -167,15 +172,15 @@ export default function UploadModal({
             >
               <FolderOpen
                 size={48}
-                className={`transition-colors ${dragOver ? "text-blue-500" : "text-blue-600 opacity-50"}`}
+                className={`transition-colors ${dragOver ? "text-blue-500" : "text-blue-600 opacity-50 dark:text-blue-400 dark:opacity-80"}`}
               />
               <div>
-                <p className="font-medium mb-1">
+                <p className="font-medium mb-1 dark:text-white">
                   {dragOver
                     ? "Drop files here"
                     : "Click to browse or drag files"}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   Supports PDF, Word, Excel, PowerPoint, Images, and Text files
                 </p>
               </div>
@@ -185,19 +190,19 @@ export default function UploadModal({
           {/* Selected Files List */}
           {selectedFiles.length > 0 && (
             <div className="mb-6">
-              <p className="text-sm font-medium mb-3">
+              <p className="text-sm font-medium mb-3 dark:text-white">
                 Selected Files ({selectedFiles.length})
               </p>
-              <div className="max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg p-2">
+              <div className="max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg p-2 dark:border-slate-800">
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
                     className={`flex justify-between items-center p-2 rounded-md mb-1 last:mb-0 ${
                       uploadStatus.success.includes(file.name)
-                        ? "bg-green-50"
+                        ? "bg-green-50 dark:bg-green-900/20"
                         : uploadStatus.failed.includes(file.name)
-                          ? "bg-red-50"
-                          : "bg-white"
+                          ? "bg-red-50 dark:bg-red-900/20"
+                          : "bg-white dark:bg-slate-800"
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -207,8 +212,10 @@ export default function UploadModal({
                       {uploadStatus.failed.includes(file.name) && (
                         <AlertCircle size={16} className="text-red-500" />
                       )}
-                      <span className="text-sm">{file.name}</span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-sm dark:text-emerald-50">
+                        {file.name}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-slate-500">
                         ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
@@ -216,7 +223,7 @@ export default function UploadModal({
                       !uploadStatus.success.includes(file.name) && (
                         <button
                           onClick={() => removeFile(index)}
-                          className="p-1 rounded-md text-gray-500 transition-colors cursor-pointer flex items-center justify-center hover:bg-gray-100 hover:text-blue-600"
+                          className="p-1 rounded-md text-gray-500 transition-colors cursor-pointer flex items-center justify-center hover:bg-gray-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-red-400"
                         >
                           <X size={14} />
                         </button>

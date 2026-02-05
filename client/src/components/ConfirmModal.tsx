@@ -39,24 +39,24 @@ export default function ConfirmModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md overflow-hidden bg-white rounded-2xl shadow-2xl"
+          className="relative w-full max-w-md overflow-hidden bg-white rounded-2xl shadow-2xl dark:bg-slate-900"
         >
           <div className="p-6">
             <div className="flex items-start gap-4">
               <div
                 className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${
                   variant === "danger"
-                    ? "bg-red-50 text-red-600"
-                    : "bg-blue-50 text-blue-600"
+                    ? "bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                    : "bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400"
                 }`}
               >
                 <AlertTriangle size={24} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-gray-900 mb-1">
+                <h3 className="text-lg font-bold text-gray-900 mb-1 dark:text-white">
                   {title}
                 </h3>
-                <p className="text-sm text-gray-500 leading-relaxed">
+                <p className="text-sm text-gray-500 leading-relaxed dark:text-slate-400">
                   {message}
                 </p>
               </div>
@@ -68,7 +68,7 @@ export default function ConfirmModal({
               />
             </div>
           </div>
-          <div className="px-6 py-4 bg-gray-50 flex flex-col sm:flex-row-reverse gap-3">
+          <div className="px-6 py-4 bg-gray-50 flex flex-col sm:flex-row-reverse gap-3 dark:bg-slate-800/50">
             <Button
               variant={variant === "danger" ? "danger" : "primary"}
               onClick={() => {

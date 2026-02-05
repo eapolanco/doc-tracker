@@ -241,14 +241,14 @@ export default function Visualizer({ document, onClose }: Props) {
         );
       default:
         return (
-          <div className="flex flex-col items-center justify-center text-center h-full min-h-[400px]">
-            <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center text-gray-400 mb-6">
+          <div className="flex flex-col items-center justify-center text-center h-full min-h-[400px] dark:text-slate-400">
+            <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center text-gray-400 mb-6 dark:bg-slate-800 dark:text-slate-600">
               <FileText size={40} />
             </div>
-            <p className="text-gray-900 font-semibold text-lg mb-2">
+            <p className="text-gray-900 font-semibold text-lg mb-2 dark:text-white">
               Preview not available
             </p>
-            <p className="text-gray-500 mb-8 max-w-[280px]">
+            <p className="text-gray-500 mb-8 max-w-[280px] dark:text-slate-400">
               We couldn't generate a preview for <b>.{type}</b> files. You can
               still download it below.
             </p>
@@ -265,24 +265,24 @@ export default function Visualizer({ document, onClose }: Props) {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-20 shrink-0">
+    <div className="flex h-full flex-col dark:bg-slate-900">
+      <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-20 shrink-0 dark:bg-slate-900 dark:border-slate-800">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0 dark:bg-blue-900/20 dark:text-blue-400">
             <FileText size={20} strokeWidth={2.5} />
           </div>
           <div className="min-w-0">
             <h2
-              className="text-[15px] font-bold text-gray-900 truncate"
+              className="text-[15px] font-bold text-gray-900 truncate dark:text-white"
               title={document.name}
             >
               {document.name}
             </h2>
-            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
-              <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium dark:text-slate-400">
+              <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 uppercase tracking-wider dark:bg-slate-800 dark:text-slate-300">
                 {document.category}
               </span>
-              <span className="w-1 h-1 rounded-full bg-gray-300" />
+              <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-slate-700" />
               <span className="capitalize">
                 {document.cloudSource || "local"}
               </span>
@@ -295,7 +295,7 @@ export default function Visualizer({ document, onClose }: Props) {
             className={`p-2 rounded-xl transition-all cursor-pointer border ${
               showMetadata
                 ? "bg-blue-600 text-white border-blue-600"
-                : "text-gray-500 hover:bg-gray-100 hover:text-blue-600 border-transparent hover:border-gray-200"
+                : "text-gray-500 hover:bg-gray-100 hover:text-blue-600 border-transparent hover:border-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400 dark:hover:border-slate-700"
             }`}
             title={showMetadata ? "Hide Info" : "Show Info"}
           >
@@ -305,14 +305,14 @@ export default function Visualizer({ document, onClose }: Props) {
             href={fileUrl}
             target="_blank"
             rel="noreferrer"
-            className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-all cursor-pointer border border-transparent hover:border-gray-200"
+            className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-all cursor-pointer border border-transparent hover:border-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400 dark:hover:border-slate-700"
             title="Open in new tab"
           >
             <ExternalLink size={18} />
           </a>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-red-500 transition-all cursor-pointer border border-transparent hover:border-gray-200"
+            className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-red-500 transition-all cursor-pointer border border-transparent hover:border-gray-200 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-400 dark:hover:border-slate-700"
             title="Close Preview"
           >
             <X size={20} />
@@ -322,7 +322,7 @@ export default function Visualizer({ document, onClose }: Props) {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6">
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6 dark:bg-slate-950/20">
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full">
               <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -332,17 +332,19 @@ export default function Visualizer({ document, onClose }: Props) {
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center h-full text-center p-4">
-              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4 dark:bg-red-900/20">
                 <Info size={32} />
               </div>
-              <p className="text-gray-900 font-bold text-lg mb-2">
+              <p className="text-gray-900 font-bold text-lg mb-2 dark:text-white">
                 Error Loading Preview
               </p>
-              <p className="text-gray-500 mb-8 max-w-[300px]">{error}</p>
+              <p className="text-gray-500 mb-8 max-w-[300px] dark:text-slate-400">
+                {error}
+              </p>
               <a
                 href={fileUrl}
                 download
-                className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center transition-all hover:opacity-90"
+                className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center transition-all hover:opacity-90 dark:bg-white dark:text-slate-900"
               >
                 <Download size={18} className="mr-2" /> Download File
               </a>
@@ -354,7 +356,7 @@ export default function Visualizer({ document, onClose }: Props) {
 
         {/* Metadata Sidebar (Toggleable) */}
         {showMetadata && (
-          <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto p-6 flex flex-col gap-8 shrink-0 animate-in slide-in-from-right duration-300">
+          <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto p-6 flex flex-col gap-8 shrink-0 animate-in slide-in-from-right duration-300 dark:bg-slate-900 dark:border-slate-800">
             {/* File Info Section */}
             <div>
               <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
@@ -362,24 +364,30 @@ export default function Visualizer({ document, onClose }: Props) {
               </h3>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
-                  <Hash className="text-gray-400 mt-0.5" size={16} />
+                  <Hash
+                    className="text-gray-400 mt-0.5 dark:text-slate-500"
+                    size={16}
+                  />
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider dark:text-slate-500">
                       Size
                     </p>
-                    <p className="text-sm font-bold text-gray-900 font-mono">
+                    <p className="text-sm font-bold text-gray-900 font-mono dark:text-white">
                       {formatFileSize(document.fileSize)}
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Calendar className="text-gray-400 mt-0.5" size={16} />
+                  <Calendar
+                    className="text-gray-400 mt-0.5 dark:text-slate-500"
+                    size={16}
+                  />
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider dark:text-slate-500">
                       Uploaded At
                     </p>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">
                       {document.uploadedAt
                         ? format(
                             new Date(document.uploadedAt),
@@ -391,12 +399,15 @@ export default function Visualizer({ document, onClose }: Props) {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Clock className="text-gray-400 mt-0.5" size={16} />
+                  <Clock
+                    className="text-gray-400 mt-0.5 dark:text-slate-500"
+                    size={16}
+                  />
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider dark:text-slate-500">
                       Last Modified
                     </p>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">
                       {format(
                         new Date(document.lastModified),
                         "MMM d, yyyy HH:mm",
@@ -406,15 +417,15 @@ export default function Visualizer({ document, onClose }: Props) {
                 </div>
 
                 {document.encrypted && (
-                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-3 dark:bg-emerald-950/20 dark:border-emerald-900/30">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
                       <ShieldCheck size={18} strokeWidth={2.5} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-emerald-900">
+                      <p className="text-xs font-bold text-emerald-900 dark:text-emerald-300">
                         Encrypted
                       </p>
-                      <p className="text-[10px] text-emerald-700 font-medium">
+                      <p className="text-[10px] text-emerald-700 font-medium dark:text-emerald-500">
                         Protected Metadata Layer
                       </p>
                     </div>
@@ -425,21 +436,21 @@ export default function Visualizer({ document, onClose }: Props) {
 
             {/* Tags Section */}
             <div>
-              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2 dark:text-slate-500">
                 <TagIcon size={14} /> Management Tags
               </h3>
-              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 dark:bg-slate-800/50 dark:border-slate-800">
                 <div className="flex flex-wrap gap-2 mb-4">
                   {tags.length > 0 ? (
                     tags.map((tag, idx) => (
                       <span
                         key={idx}
-                        className="group inline-flex items-center gap-1.5 bg-white border border-blue-100 text-blue-600 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
+                        className="group inline-flex items-center gap-1.5 bg-white border border-blue-100 text-blue-600 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm transition-all hover:border-blue-300 hover:shadow-md dark:bg-slate-800 dark:border-blue-900 dark:text-blue-400 dark:hover:border-blue-700"
                       >
                         {tag}
                         <button
                           onClick={() => handleRemoveTag(tag)}
-                          className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+                          className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all dark:hover:text-red-400"
                         >
                           <X size={12} />
                         </button>
@@ -458,7 +469,7 @@ export default function Visualizer({ document, onClose }: Props) {
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-300 pr-10"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-300 pr-10 dark:bg-slate-900 dark:border-slate-700 dark:text-white dark:placeholder-slate-600"
                   />
                   <button
                     onClick={handleAddTag}
@@ -470,7 +481,7 @@ export default function Visualizer({ document, onClose }: Props) {
               </div>
             </div>
 
-            <div className="mt-auto pt-6 border-t border-gray-100">
+            <div className="mt-auto pt-6 border-t border-gray-100 dark:border-slate-800">
               <div className="flex flex-col gap-2">
                 <button
                   onClick={() => {
@@ -479,7 +490,7 @@ export default function Visualizer({ document, onClose }: Props) {
                     link.download = document.name;
                     link.click();
                   }}
-                  className="w-full bg-gray-900 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg"
+                  className="w-full bg-gray-900 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                 >
                   <Download size={14} /> Download File
                 </button>

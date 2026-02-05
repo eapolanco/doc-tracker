@@ -95,9 +95,21 @@ function App() {
     }
   }, [appSettings?.app?.theme]);
 
-  // Update Document Title
+  // Update Page Title and Meta
   useEffect(() => {
-    document.title = appSettings?.app?.name || "DocTracker";
+    const appName = appSettings?.app?.name || "DocTracker";
+    document.title = `${appName} | Smart Document Management`;
+
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (!metaDesc) {
+      metaDesc = document.createElement("meta");
+      metaDesc.setAttribute("name", "description");
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.setAttribute(
+      "content",
+      `Manage your documents with ${appName}. Secure, organized, and fast document tracking application.`,
+    );
   }, [appSettings?.app?.name]);
 
   useEffect(() => {

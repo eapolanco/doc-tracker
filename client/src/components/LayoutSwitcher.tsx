@@ -13,13 +13,13 @@ export default function LayoutSwitcher({
 }: LayoutSwitcherProps) {
   return (
     <div
-      className={`flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm ${className}`}
+      className={`flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm dark:bg-slate-900 dark:border-slate-800 ${className}`}
     >
       <button
         className={`p-1.5 rounded-md transition-all ${
           viewType === "grid"
-            ? "bg-gray-100 text-blue-600 shadow-sm"
-            : "text-gray-500 hover:text-gray-900"
+            ? "bg-gray-100 text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400"
+            : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
         }`}
         onClick={() => onViewChange("grid")}
         title="Grid View"
@@ -29,8 +29,8 @@ export default function LayoutSwitcher({
       <button
         className={`p-1.5 rounded-md transition-all ${
           viewType === "list"
-            ? "bg-gray-100 text-blue-600 shadow-sm"
-            : "text-gray-500 hover:text-gray-900"
+            ? "bg-gray-100 text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400"
+            : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
         }`}
         onClick={() => onViewChange("list")}
         title="List View"
@@ -40,8 +40,8 @@ export default function LayoutSwitcher({
       <button
         className={`p-1.5 rounded-md transition-all ${
           viewType === "compact"
-            ? "bg-gray-100 text-blue-600 shadow-sm"
-            : "text-gray-500 hover:text-gray-900"
+            ? "bg-gray-100 text-blue-600 shadow-sm dark:bg-slate-800 dark:text-blue-400"
+            : "text-gray-500 hover:text-gray-900 dark:text-slate-400 dark:hover:text-white"
         }`}
         onClick={() => onViewChange("compact")}
         title="Compact View"

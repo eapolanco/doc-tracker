@@ -36,7 +36,7 @@ export default function Sidebar({
         className="p-6 border-b border-gray-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer"
         onClick={() => setActiveTab("docs_all")}
       >
-        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-900/40">
           <Layout size={20} />
         </div>
         <span className="text-xl font-black text-gray-900 dark:text-white tracking-tight">

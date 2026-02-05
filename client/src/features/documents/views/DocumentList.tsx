@@ -372,10 +372,10 @@ export default function DocumentList() {
     if (searchQuery) {
       return (
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
+          <div className="flex items-center gap-2 text-xs font-medium text-gray-500 dark:text-slate-400">
             <Search size={14} className="text-blue-500" />
             <span>Search results for</span>
-            <span className="text-gray-900 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+            <span className="text-gray-900 font-bold bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
               "{searchQuery}"
             </span>
           </div>
@@ -391,7 +391,7 @@ export default function DocumentList() {
 
     const parts = currentPath ? currentPath.split("/") : [];
     return (
-      <div className="flex items-center gap-2 text-xs font-medium text-gray-500 flex-wrap">
+      <div className="flex items-center gap-2 text-xs font-medium text-gray-500 flex-wrap dark:text-slate-400">
         <button
           onClick={() => setCurrentPath("")}
           onDragOver={(e) => {
@@ -402,8 +402,8 @@ export default function DocumentList() {
           onDrop={(e) => handleDrop(e, "")}
           className={`flex items-center gap-1 transition-colors ${
             dropTargetId === "root"
-              ? "text-blue-600 scale-110 font-bold"
-              : "hover:text-blue-600"
+              ? "text-blue-600 scale-110 font-bold dark:text-blue-400"
+              : "hover:text-blue-600 dark:hover:text-blue-400"
           }`}
         >
           <Home size={14} />
@@ -424,8 +424,8 @@ export default function DocumentList() {
                 onDrop={(e) => handleDrop(e, path)}
                 className={`transition-colors ${
                   dropTargetId === path
-                    ? "text-blue-600 scale-110 font-bold"
-                    : "hover:text-blue-600"
+                    ? "text-blue-600 scale-110 font-bold dark:text-blue-400"
+                    : "hover:text-blue-600 dark:hover:text-blue-400"
                 }`}
               >
                 {part}
@@ -470,7 +470,7 @@ export default function DocumentList() {
               <input
                 type="text"
                 placeholder="Search documents..."
-                className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder-slate-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -567,7 +567,7 @@ export default function DocumentList() {
                     }
                   : { duration: 0 }
               }
-              className="shrink-0 border-l border-gray-200 bg-white flex flex-col z-10 overflow-hidden"
+              className="shrink-0 border-l border-gray-200 bg-white flex flex-col z-10 overflow-hidden dark:bg-slate-900 dark:border-slate-800"
             >
               {selectedDoc && (
                 <Visualizer
@@ -605,7 +605,7 @@ export default function DocumentList() {
               exit={{ opacity: 0, y: 50, x: "-50%" }}
               className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
             >
-              <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
+              <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2 dark:border-slate-800">
                 <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
                   <span className="text-xs font-black">
                     {clipboard.ids.length}
@@ -615,7 +615,7 @@ export default function DocumentList() {
                   <span className="text-[11px] font-black text-indigo-600 uppercase tracking-wider leading-none">
                     Clipboard
                   </span>
-                  <span className="text-[13px] font-bold text-gray-900 leading-tight">
+                  <span className="text-[13px] font-bold text-gray-900 leading-tight dark:text-white">
                     {clipboard.type === "copy" ? "To Copy" : "To Move"}
                   </span>
                 </div>
@@ -629,14 +629,14 @@ export default function DocumentList() {
                     handleMove(clipboard.ids, currentPath);
                   }
                 }}
-                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-indigo-600 transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-indigo-600 transition-colors dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-indigo-400"
                 title="Paste Here"
               >
                 <ClipboardCheck size={20} />
               </button>
               <button
                 onClick={() => setClipboard(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-600 transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-red-600 transition-colors dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-red-400"
                 title="Cancel"
               >
                 <X size={20} />

@@ -9,7 +9,16 @@
   select,
   textarea {
     font-family: "Inter", sans-serif;
-    @apply bg-gray-50 text-gray-900;
+    @apply bg-gray-50 text-gray-900 transition-colors duration-300;
+  }
+
+  .dark body,
+  .dark #root,
+  .dark button,
+  .dark input,
+  .dark select,
+  .dark textarea {
+    @apply bg-slate-950 text-slate-100;
   }
 
   body,

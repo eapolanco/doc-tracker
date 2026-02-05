@@ -18,7 +18,10 @@ export default function Page({
   className = "",
 }: PageProps) {
   return (
-    <div className={`flex h-full w-full overflow-hidden flex-col ${className}`}>
+    <div
+      id={`page-${typeof title === "string" ? title.toLowerCase().replace(/\s+/g, "-") : "content"}`}
+      className={`flex h-full w-full overflow-hidden flex-col ${className}`}
+    >
       <header className="px-8 pt-8 pb-4 shrink-0 border-b border-gray-100 bg-white/50 backdrop-blur-md sticky top-0 z-20 dark:border-slate-800 dark:bg-slate-900/90">
         <div className="flex justify-between items-center mb-4">
           <div>

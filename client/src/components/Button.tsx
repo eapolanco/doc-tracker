@@ -39,10 +39,11 @@ export default function Button({
     success:
       "bg-emerald-500 text-white hover:bg-emerald-600 shadow-md shadow-emerald-500/20",
     outline:
-      "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm",
-    ghost: "bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+      "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 shadow-sm dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-700",
+    ghost:
+      "bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white",
     outline_danger:
-      "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300 shadow-sm",
+      "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300 shadow-sm dark:bg-slate-900 dark:text-red-400 dark:border-red-900/50 dark:hover:bg-red-950/20 dark:hover:border-red-800",
   };
 
   return (

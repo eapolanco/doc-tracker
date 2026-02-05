@@ -510,8 +510,8 @@ export default function DocumentGrid({
         <button
           className={`p-1.5 rounded-md transition-colors ${
             activeMenu === doc.id
-              ? "bg-gray-100 text-gray-900"
-              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              ? "bg-gray-100 text-gray-900 dark:bg-slate-800 dark:text-white"
+              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
           }`}
           onClick={(e) => {
             e.stopPropagation();
@@ -524,11 +524,11 @@ export default function DocumentGrid({
         {activeMenu === doc.id && (
           <div
             ref={menuRef}
-            className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-2xl min-w-[180px] z-50 flex flex-col p-1.5"
+            className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-2xl min-w-[180px] z-50 flex flex-col p-1.5 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none"
             onClick={(e) => e.stopPropagation()}
           >
             <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={(e) => {
                 e.stopPropagation();
                 onPreview(doc);
@@ -539,14 +539,14 @@ export default function DocumentGrid({
             </div>
             {!isFolder && (
               <div
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
                 onClick={(e) => handleDownload(e, fileDoc)}
               >
                 <Download size={14} /> Download
               </div>
             )}
             <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={(e) => {
                 e.stopPropagation();
                 startRename(doc);
@@ -555,7 +555,7 @@ export default function DocumentGrid({
               <Edit2 size={14} /> Rename
             </div>
             <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onSetClipboard)
@@ -566,7 +566,7 @@ export default function DocumentGrid({
               <Copy size={14} /> Copy
             </div>
             <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onSetClipboard)
@@ -577,7 +577,7 @@ export default function DocumentGrid({
               <Scissors size={14} /> Cut
             </div>
             <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
               onClick={(e) => {
                 e.stopPropagation();
                 handleShare(doc);
@@ -589,9 +589,9 @@ export default function DocumentGrid({
               />
               {doc.isShared ? "Stop Sharing" : "Share"}
             </div>
-            <div className="h-px bg-gray-200 my-1" />
+            <div className="h-px bg-gray-200 dark:bg-slate-800 my-1" />
             <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
               onClick={() => handleDelete(fileDoc)}
             >
               <Trash2 size={14} /> Delete
@@ -683,17 +683,17 @@ export default function DocumentGrid({
           ? { type: "spring", stiffness: 300, damping: 40, mass: 0.8 }
           : { duration: 0 }
       }
-      className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
+      className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1 dark:bg-slate-900/90 dark:border-slate-800 dark:shadow-none"
     >
-      <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
-        <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+      <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 dark:border-slate-800 mr-2">
+        <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-900/40">
           <span className="text-xs font-black">{selectedIds.size}</span>
         </div>
         <div className="flex flex-col">
-          <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider leading-none">
+          <span className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider leading-none">
             Selected
           </span>
-          <span className="text-[13px] font-bold text-gray-900 leading-tight">
+          <span className="text-[13px] font-bold text-gray-900 dark:text-white leading-tight">
             Items
           </span>
         </div>
@@ -711,11 +711,11 @@ export default function DocumentGrid({
                   });
                 setSelectedIds(new Set());
               }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all active:scale-95 group"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all active:scale-95 group dark:text-slate-300 dark:hover:bg-slate-800"
             >
               <Copy
                 size={18}
-                className="text-gray-400 group-hover:text-blue-500"
+                className="text-gray-400 group-hover:text-blue-500 dark:text-slate-500 dark:group-hover:text-blue-400"
               />
               Copy
             </button>
@@ -728,11 +728,11 @@ export default function DocumentGrid({
                   });
                 setSelectedIds(new Set());
               }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all active:scale-95 group"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all active:scale-95 group dark:text-slate-300 dark:hover:bg-slate-800"
             >
               <Scissors
                 size={18}
-                className="text-gray-400 group-hover:text-indigo-500"
+                className="text-gray-400 group-hover:text-indigo-500 dark:text-slate-500 dark:group-hover:text-indigo-400"
               />
               Cut
             </button>
@@ -742,7 +742,7 @@ export default function DocumentGrid({
         {isTrash && (
           <button
             onClick={handleBulkRestore}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
           >
             <RefreshCcw size={18} />
             Restore
@@ -751,17 +751,17 @@ export default function DocumentGrid({
 
         <button
           onClick={handleBulkDelete}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95 dark:text-red-400 dark:hover:bg-red-950/30"
         >
           <Trash2 size={18} />
           {isTrash ? "Delete Forever" : "Delete"}
         </button>
 
-        <div className="w-px h-8 bg-gray-100 mx-1" />
+        <div className="w-px h-8 bg-gray-100 dark:bg-slate-800 mx-1" />
 
         <button
           onClick={() => setSelectedIds(new Set())}
-          className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+          className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all dark:text-slate-500 dark:hover:text-white dark:hover:bg-slate-800"
           title="Clear Selection"
         >
           <X size={20} />
@@ -773,12 +773,12 @@ export default function DocumentGrid({
   if (viewType === "compact") {
     return (
       <div className="flex flex-col">
-        <div className="flex items-center px-4 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100/50 mb-1">
+        <div className="flex items-center px-4 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100/50 mb-1 dark:border-slate-800 dark:text-slate-500">
           <div className="w-8 flex items-center justify-center">
             <input
               ref={selectAllRef}
               type="checkbox"
-              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
               checked={
                 selectedIds.size === documents.length && documents.length > 0
               }
@@ -787,7 +787,7 @@ export default function DocumentGrid({
           </div>
           <div className="w-8"></div>
           <div
-            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
             onClick={() => onSort?.("name")}
           >
             Name
@@ -800,7 +800,7 @@ export default function DocumentGrid({
           </div>
           <div className="w-20 text-right px-2">Size</div>
           <div
-            className="w-28 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            className="w-28 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
             onClick={() => onSort?.("date")}
           >
             Date
@@ -830,10 +830,10 @@ export default function DocumentGrid({
               className={`group flex items-center py-1 px-4 cursor-pointer transition-colors border-l-2
                 ${
                   isSelected
-                    ? "bg-blue-50 border-blue-500"
+                    ? "bg-blue-50 border-blue-500 dark:bg-blue-900/20 dark:border-blue-500"
                     : dropTargetId === doc.id
-                      ? "bg-amber-50 border-amber-500"
-                      : "bg-white border-transparent hover:bg-gray-50 hover:border-blue-200"
+                      ? "bg-amber-50 border-amber-500 dark:bg-amber-900/20 dark:border-amber-500"
+                      : "bg-white border-transparent hover:bg-gray-50 hover:border-blue-200 dark:bg-slate-950 dark:hover:bg-slate-900 dark:hover:border-blue-900"
                 } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
               onClick={() => {
                 if (renamingId !== doc.id) {
@@ -851,7 +851,7 @@ export default function DocumentGrid({
               >
                 <input
                   type="checkbox"
-                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
                   checked={isSelected}
                   onChange={() => {}}
                 />
@@ -859,7 +859,7 @@ export default function DocumentGrid({
 
               <div className="w-8">
                 <div
-                  className={`w-6 h-6 ${bg} rounded flex items-center justify-center ${color}`}
+                  className={`w-6 h-6 ${bg} rounded flex items-center justify-center ${color} dark:bg-opacity-20`}
                 >
                   {(doc as Document).status === "corrupted" ? (
                     <AlertTriangle size={12} className="text-red-500" />
@@ -919,12 +919,12 @@ export default function DocumentGrid({
   if (viewType === "list") {
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex items-center px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100">
+        <div className="flex items-center px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-slate-800 dark:text-slate-500">
           <div className="w-10 flex items-center justify-center">
             <input
               ref={selectAllRef}
               type="checkbox"
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
               checked={
                 selectedIds.size === documents.length && documents.length > 0
               }
@@ -933,7 +933,7 @@ export default function DocumentGrid({
           </div>
           <div className="w-10"></div>
           <div
-            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
             onClick={() => onSort?.("name")}
           >
             Name
@@ -946,13 +946,13 @@ export default function DocumentGrid({
           </div>
           <div className="w-32">Tags</div>
           <div
-            className="w-24 px-2 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header text-right justify-end"
+            className="w-24 px-2 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header text-right justify-end dark:hover:text-white"
             onClick={() => onSort?.("name")} // Reuse sort or add size sort later
           >
             Size
           </div>
           <div
-            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
             onClick={() => onSort?.("category")}
           >
             Category
@@ -964,7 +964,7 @@ export default function DocumentGrid({
               ))}
           </div>
           <div
-            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
+            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
             onClick={() => onSort?.("date")}
           >
             Last Modified
@@ -996,12 +996,12 @@ export default function DocumentGrid({
               className={`group flex items-center rounded-lg border p-4 cursor-pointer transition-all duration-200 relative
                 ${
                   isSelected
-                    ? "bg-blue-50/50 border-blue-500/50 shadow-sm"
+                    ? "bg-blue-50/50 border-blue-500/50 shadow-sm dark:bg-blue-900/20 dark:border-blue-500/50"
                     : dropTargetId === doc.id
-                      ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02]"
+                      ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02] dark:bg-amber-900/20 dark:border-amber-500"
                       : isRecentlyUploaded(doc.uploadedAt)
-                        ? "bg-blue-50/30 border-blue-200/50 shadow-sm"
-                        : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30"
+                        ? "bg-blue-50/30 border-blue-200/50 shadow-sm dark:bg-blue-900/10 dark:border-blue-900/30"
+                        : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-blue-900/50"
                 } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${shouldPulse(doc.uploadedAt) ? "animate-pulse-blue ring-2 ring-blue-500/10" : ""}`}
               style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
               onClick={() => {
@@ -1028,7 +1028,7 @@ export default function DocumentGrid({
 
               <div className="w-10">
                 <div
-                  className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color}`}
+                  className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color} dark:bg-opacity-20`}
                 >
                   {(doc as Document).status === "corrupted" ? (
                     <AlertTriangle size={16} className="text-red-500" />
@@ -1044,7 +1044,7 @@ export default function DocumentGrid({
                 ) : (
                   <div className="flex flex-col">
                     <div
-                      className="text-sm font-semibold text-gray-900 truncate"
+                      className="text-sm font-semibold text-gray-900 truncate dark:text-white"
                       title={doc.name}
                     >
                       {doc.name}
@@ -1071,7 +1071,7 @@ export default function DocumentGrid({
                     return tagsArray.map((tag: string, idx: number) => (
                       <span
                         key={idx}
-                        className="px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-medium border border-gray-200"
+                        className="px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-medium border border-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
                       >
                         {tag}
                       </span>
@@ -1087,16 +1087,16 @@ export default function DocumentGrid({
               </div>
 
               <div className="w-40">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                   {doc.category}
                 </span>
               </div>
 
-              <div className="w-40 text-xs text-gray-500">
+              <div className="w-40 text-xs text-gray-500 dark:text-slate-400">
                 {format(new Date(doc.lastModified), "MMM d, yyyy")}
               </div>
 
-              <div className="w-32 flex items-center gap-1.5 text-xs text-gray-500 capitalize">
+              <div className="w-32 flex items-center gap-1.5 text-xs text-gray-500 capitalize dark:text-slate-400">
                 <ExternalLink size={12} className="opacity-50" />
                 {doc.cloudSource}
               </div>
@@ -1124,12 +1124,12 @@ export default function DocumentGrid({
   return (
     <div className="flex flex-col gap-4">
       {/* Grid View Header with Select All */}
-      <div className="flex items-center px-2 py-2 border-b border-gray-100">
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:text-gray-900 transition-colors">
+      <div className="flex items-center px-2 py-2 border-b border-gray-100 dark:border-slate-800">
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:text-gray-900 transition-colors dark:text-slate-400 dark:hover:text-white">
           <input
             ref={selectAllRef}
             type="checkbox"
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
             checked={
               selectedIds.size === documents.length && documents.length > 0
             }
@@ -1206,10 +1206,10 @@ export default function DocumentGrid({
                 className={`group rounded-3xl border p-6 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative
                 ${
                   isSelected
-                    ? "bg-blue-50/90 border-blue-200 shadow-lg ring-2 ring-blue-500/20"
+                    ? "bg-blue-50/90 border-blue-200 shadow-lg ring-2 ring-blue-500/20 dark:bg-blue-900/30 dark:border-blue-500/50 dark:shadow-blue-900/20"
                     : dropTargetId === doc.id
-                      ? "bg-amber-50 border-amber-500 shadow-xl scale-[1.02] z-20"
-                      : "bg-white/80 backdrop-blur-sm border-gray-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 hover:border-blue-200/50 hover:bg-white"
+                      ? "bg-amber-50 border-amber-500 shadow-xl scale-[1.02] z-20 dark:bg-amber-900/30 dark:border-amber-500"
+                      : "bg-white/80 backdrop-blur-sm border-gray-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 hover:border-blue-200/50 hover:bg-white dark:bg-slate-900 dark:border-slate-800 dark:shadow-none dark:hover:bg-slate-800/80 dark:hover:border-slate-700"
                 } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${isPulsing ? "animate-pulse-blue border-blue-400 ring-4 ring-blue-500/10" : ""}`}
                 onClick={() => {
                   if (renamingId !== doc.id) {
@@ -1236,7 +1236,7 @@ export default function DocumentGrid({
                     >
                       <div
                         className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center
-                      ${isSelected ? "bg-blue-600 border-blue-600 shadow-md shadow-blue-500/30" : "border-gray-200 bg-white group-hover:border-blue-400/50 opacity-40 group-hover:opacity-100 shadow-sm"}
+                      ${isSelected ? "bg-blue-600 border-blue-600 shadow-md shadow-blue-500/30" : "border-gray-200 bg-white group-hover:border-blue-400/50 opacity-40 group-hover:opacity-100 shadow-sm dark:bg-slate-800 dark:border-slate-700"}
                      `}
                       >
                         {isSelected && (
@@ -1252,7 +1252,7 @@ export default function DocumentGrid({
                     </div>
 
                     <div
-                      className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3`}
+                      className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 dark:bg-opacity-20`}
                     >
                       <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
                       {(doc as Document).status === "corrupted" && (
@@ -1281,7 +1281,7 @@ export default function DocumentGrid({
                   ) : (
                     <div className="flex flex-col gap-1">
                       <div
-                        className="text-[17px] font-bold text-gray-900 truncate leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-2"
+                        className="text-[17px] font-bold text-gray-900 truncate leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-2 dark:text-white dark:group-hover:text-blue-400"
                         title={doc.name}
                       >
                         <span className="truncate">{doc.name}</span>
@@ -1292,7 +1292,7 @@ export default function DocumentGrid({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="text-[11px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <div className="text-[11px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2 dark:text-slate-500">
                           <span className="truncate max-w-[120px]">
                             {doc.category || "General"}
                           </span>
@@ -1309,13 +1309,13 @@ export default function DocumentGrid({
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100/80 mt-auto">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100/80 mt-auto dark:border-slate-800">
                     <div className="flex flex-col gap-0.5">
-                      <div className="text-[11px] text-gray-500 font-medium">
+                      <div className="text-[11px] text-gray-500 font-medium dark:text-slate-400">
                         {format(new Date(doc.lastModified), "MMM d, yyyy")}
                       </div>
                       {doc.type === "file" && (
-                        <div className="text-[11px] text-gray-900/40 font-mono">
+                        <div className="text-[11px] text-gray-900/40 font-mono dark:text-slate-500">
                           {formatFileSize((doc as Document).fileSize)}
                         </div>
                       )}
@@ -1323,12 +1323,12 @@ export default function DocumentGrid({
 
                     <div className="flex flex-col items-end gap-1.5">
                       {isFolder ? (
-                        <div className="text-[10px] bg-amber-50 text-amber-600 border border-amber-100 font-bold px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm">
+                        <div className="text-[10px] bg-amber-50 text-amber-600 border border-amber-100 font-bold px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50">
                           Folder
                         </div>
                       ) : (
                         doc.encrypted && (
-                          <div className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
+                          <div className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/50">
                             <Lock size={12} className="opacity-80" />
                           </div>
                         )
@@ -1349,13 +1349,13 @@ export default function DocumentGrid({
                                 .map((tag: string, idx: number) => (
                                   <span
                                     key={idx}
-                                    className="px-2 py-1 rounded-lg bg-gray-50 text-gray-500 text-[10px] font-bold border border-gray-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-colors"
+                                    className="px-2 py-1 rounded-lg bg-gray-50 text-gray-500 text-[10px] font-bold border border-gray-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-colors dark:bg-slate-800 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-700"
                                   >
                                     #{tag}
                                   </span>
                                 ))}
                               {tagsArray.length > 3 && (
-                                <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg">
+                                <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg dark:bg-slate-800 dark:text-slate-500">
                                   +{tagsArray.length - 3}
                                 </span>
                               )}

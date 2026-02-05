@@ -25,7 +25,7 @@ import { encryptBuffer, getDecipherStream } from "./services/crypto.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DOCUMENTS_ROOT = path.resolve(__dirname, "../../documents");
+const DOCUMENTS_ROOT = path.resolve(__dirname, "../../data/documents");
 
 // Helper to get absolute path from DB path
 const getAbsolutePath = (dbPath: string) => {
@@ -83,8 +83,7 @@ async function updateScanSchedule() {
 
       scanInterval = setInterval(() => {
         console.log("Running scheduled scan...");
-        const rootDir = path.join(__dirname, "../../documents");
-        scanDirectory(rootDir);
+        scanDirectory(DOCUMENTS_ROOT);
       }, ms);
     } else {
       console.log("Auto-scan disabled");
@@ -1272,8 +1271,7 @@ app.put("/api/documents/:id/tags", async (req, res) => {
 });
 
 app.post("/api/scan", async (req, res) => {
-  const rootDir = path.join(__dirname, "../../documents");
-  await scanDirectory(rootDir);
+  await scanDirectory(DOCUMENTS_ROOT);
   res.json({ message: "Scan complete" });
 });
 
@@ -1282,7 +1280,7 @@ const PORT = process.env.PORT || 3001;
 async function ensureDirectories() {
   const rootDir = path.join(__dirname, "../../");
   const dataDir = path.join(rootDir, "data");
-  const documentsDir = path.join(rootDir, "documents");
+  const documentsDir = path.join(dataDir, "documents");
 
   const foldersToEnsure = [
     dataDir,
@@ -1354,8 +1352,7 @@ async function startServer() {
 
   // Perform initial scan to populate DB with folders
   console.log("Performing initial scan...");
-  const rootDir = path.join(__dirname, "../../documents");
-  await scanDirectory(rootDir);
+  await scanDirectory(DOCUMENTS_ROOT);
   console.log("Initial scan complete.");
 
   await updateScanSchedule();
