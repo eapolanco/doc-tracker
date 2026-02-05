@@ -31,7 +31,8 @@ pnpm-debug.log*
 
 # User data / storage
 data/
-documents/
+# documents/
+
 
 # OS files
 .DS_Store
