@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { Upload, X, FolderOpen, CheckCircle, AlertCircle } from "lucide-react";
-import Button from "@/components/Button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2 } from "lucide-react";
 
 interface Props {
   onClose: () => void;
@@ -71,7 +80,6 @@ export default function UploadModal({
           }
         });
       } else {
-        // If the request completely failed
         selectedFiles.forEach((file) => failed.push(file.name));
       }
     } catch (error) {
@@ -83,13 +91,12 @@ export default function UploadModal({
     setUploading(false);
 
     if (success.length > 0) {
-      // Trigger rescan
       await fetch(`${API_BASE}/scan`, { method: "POST" });
       setTimeout(() => {
         onUploadComplete();
         if (onProgressUpdate) onProgressUpdate(null);
         if (failed.length === 0) {
-          onClose();
+          onClose(); // Close parent
         }
       }, 1500);
     } else {
@@ -102,44 +109,28 @@ export default function UploadModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-1000 p-8"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl w-full max-w-xl flex flex-col shadow-2xl overflow-hidden dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <Upload size={20} className="dark:text-blue-400" />
-            <div className="flex flex-col">
-              <h2 className="text-lg font-semibold dark:text-white">
-                Upload Documents
-              </h2>
-              <p className="text-xs text-gray-500 font-medium tracking-tight dark:text-slate-400">
-                To:{" "}
-                <span className="text-blue-600 dark:text-blue-400">
-                  {category || "Root"}
-                </span>
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            icon={X}
-            className="p-2 h-auto"
-          />
-        </header>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-blue-600" />
+            Upload Documents
+          </DialogTitle>
+          <DialogDescription>
+            To:{" "}
+            <span className="text-blue-600 font-medium">
+              {category || "Root"}
+            </span>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="overflow-y-auto p-6">
+        <div className="grid gap-4 py-4">
           {/* File Upload Area */}
           <div
-            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 mb-6 ${
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
               dragOver
                 ? "border-blue-500 bg-blue-50/50 scale-[1.02]"
-                : "border-gray-200 bg-gray-50 hover:border-blue-400 hover:bg-gray-100/50"
+                : "border-muted-foreground/25 bg-muted/50 hover:border-blue-400 hover:bg-muted/80"
             }`}
             onDragOver={(e) => {
               e.preventDefault();
@@ -172,15 +163,17 @@ export default function UploadModal({
             >
               <FolderOpen
                 size={48}
-                className={`transition-colors ${dragOver ? "text-blue-500" : "text-blue-600 opacity-50 dark:text-blue-400 dark:opacity-80"}`}
+                className={`transition-colors ${
+                  dragOver ? "text-blue-500" : "text-muted-foreground/50"
+                }`}
               />
               <div>
-                <p className="font-medium mb-1 dark:text-white">
+                <p className="font-medium mb-1">
                   {dragOver
                     ? "Drop files here"
                     : "Click to browse or drag files"}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Supports PDF, Word, Excel, PowerPoint, Images, and Text files
                 </p>
               </div>
@@ -189,74 +182,84 @@ export default function UploadModal({
 
           {/* Selected Files List */}
           {selectedFiles.length > 0 && (
-            <div className="mb-6">
-              <p className="text-sm font-medium mb-3 dark:text-white">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">
                 Selected Files ({selectedFiles.length})
               </p>
-              <div className="max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg p-2 dark:border-slate-800">
+              <ScrollArea className="h-[200px] rounded-md border p-4">
                 {selectedFiles.map((file, index) => (
                   <div
                     key={index}
-                    className={`flex justify-between items-center p-2 rounded-md mb-1 last:mb-0 ${
+                    className={`flex justify-between items-center p-2 rounded-md mb-2 last:mb-0 ${
                       uploadStatus.success.includes(file.name)
                         ? "bg-green-50 dark:bg-green-900/20"
                         : uploadStatus.failed.includes(file.name)
                           ? "bg-red-50 dark:bg-red-900/20"
-                          : "bg-white dark:bg-slate-800"
+                          : "bg-muted/40"
                     }`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 truncate">
                       {uploadStatus.success.includes(file.name) && (
                         <CheckCircle size={16} className="text-green-500" />
                       )}
                       {uploadStatus.failed.includes(file.name) && (
                         <AlertCircle size={16} className="text-red-500" />
                       )}
-                      <span className="text-sm dark:text-emerald-50">
+                      <span className="text-sm truncate max-w-[200px]">
                         {file.name}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         ({(file.size / 1024).toFixed(1)} KB)
                       </span>
                     </div>
                     {!uploading &&
                       !uploadStatus.success.includes(file.name) && (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => removeFile(index)}
-                          className="p-1 rounded-md text-gray-500 transition-colors cursor-pointer flex items-center justify-center hover:bg-gray-100 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-red-400"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         >
                           <X size={14} />
-                        </button>
+                        </Button>
                       )}
                   </div>
                 ))}
-              </div>
+              </ScrollArea>
             </div>
           )}
 
           {uploadStatus.failed.length > 0 && (
-            <div className="p-3 bg-red-50 border border-red-500 rounded-lg mb-4">
-              <p className="text-sm text-red-700">
+            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <p className="text-sm text-destructive">
                 ❌ Failed to upload {uploadStatus.failed.length} file(s)
               </p>
             </div>
           )}
-
-          {/* Upload Button */}
-          <Button
-            variant="secondary"
-            onClick={handleUpload}
-            disabled={selectedFiles.length === 0}
-            loading={uploading}
-            className="w-full"
-            icon={uploading ? undefined : Upload}
-          >
-            {uploading
-              ? "Uploading..."
-              : `Upload ${selectedFiles.length > 0 ? `${selectedFiles.length} file(s)` : ""}`}
-          </Button>
         </div>
-      </div>
-    </div>
+
+        <Button
+          variant="secondary"
+          onClick={handleUpload}
+          disabled={selectedFiles.length === 0 || uploading}
+          className="w-full"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading...
+            </>
+          ) : (
+            <>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload{" "}
+              {selectedFiles.length > 0
+                ? `${selectedFiles.length} file(s)`
+                : ""}
+            </>
+          )}
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }

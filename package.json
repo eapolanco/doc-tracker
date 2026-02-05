@@ -11,6 +11,7 @@
     "release": "npx standard-version"
   },
   "devDependencies": {
+    "shadcn": "^3.8.3",
     "standard-version": "^9.5.0"
   }
 }

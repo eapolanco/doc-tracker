@@ -1,13 +1,20 @@
-import { ChevronRight, Home } from "lucide-react";
-import { Link } from "react-router-dom";
 import { useUIStore } from "@/store/uiStore";
 import { manifestLoader } from "@/core/manifest/ManifestLoader";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 /**
  * Breadcrumbs - Navigation breadcrumb component
  *
  * Displays the current location in the app hierarchy
  * Essential for SaaS dashboards to provide context
+ * Uses shadcn/ui Breadcrumb components for consistency
  */
 export function Breadcrumbs() {
   const { activeTab } = useUIStore();
@@ -16,19 +23,22 @@ export function Breadcrumbs() {
   const currentItem = navItems.find((item) => item.id === activeTab);
 
   return (
-    <div className="flex items-center gap-2 text-sm">
-      <Link
-        to="/app?viewid=docs_all"
-        className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <Home className="h-4 w-4" />
-      </Link>
-      {currentItem && (
-        <>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{currentItem.label}</span>
-        </>
-      )}
-    </div>
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem className="hidden md:block">
+          <BreadcrumbLink href="/app?viewid=docs_all">
+            DocTracker
+          </BreadcrumbLink>
+        </BreadcrumbItem>
+        {currentItem && (
+          <>
+            <BreadcrumbSeparator className="hidden md:block" />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{currentItem.label}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        )}
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }

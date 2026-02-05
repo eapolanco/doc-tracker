@@ -1,6 +1,18 @@
 import { useRef, useState } from "react";
 import { Cloud, Shield, Check, Edit2 } from "lucide-react";
 import type { CloudAccount, AppSettings } from "@/types";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Props {
   accounts: CloudAccount[];
@@ -26,36 +38,16 @@ export default function Settings({
     window.location.href = `/api/auth/${provider}`;
   };
 
-  const handleToggleTheme = () => {
-    if (!appSettings) return;
-    const newTheme = appSettings.app.theme === "dark" ? "light" : "dark";
-    onSaveSettings({
-      ...appSettings,
-      app: {
-        ...appSettings.app,
-        theme: newTheme,
-      },
-    });
-  };
-
-  const handleToggleAutoScan = () => {
+  const updateSetting = (
+    key: keyof AppSettings["app"],
+    value: string | boolean,
+  ) => {
     if (!appSettings) return;
     onSaveSettings({
       ...appSettings,
       app: {
         ...appSettings.app,
-        autoScan: !appSettings.app.autoScan,
-      },
-    });
-  };
-
-  const handleToggleAnimations = () => {
-    if (!appSettings) return;
-    onSaveSettings({
-      ...appSettings,
-      app: {
-        ...appSettings.app,
-        animationsEnabled: !appSettings.app.animationsEnabled,
+        [key]: value,
       },
     });
   };
@@ -70,13 +62,7 @@ export default function Settings({
     if (!appSettings) return;
     setIsEditingName(false);
     if (tempName.trim() !== appSettings.app.name) {
-      onSaveSettings({
-        ...appSettings,
-        app: {
-          ...appSettings.app,
-          name: tempName.trim() || "DocTracker",
-        },
-      });
+      updateSetting("name", tempName.trim() || "DocTracker");
     }
   };
 
@@ -91,205 +77,192 @@ export default function Settings({
   if (!appSettings) return <div>Loading settings...</div>;
 
   return (
-    <div className="flex flex-col gap-8 max-w-3xl animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Cloud size={20} className="text-blue-600" />
-          Cloud Integrations
-        </h3>
-        <p className="text-sm text-gray-500 mb-6">
-          Connect your cloud storage accounts to automatically sync and
-          visualize your documents.
-        </p>
-
-        <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-6 max-w-3xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Cloud className="h-5 w-5 text-blue-600" />
+            <CardTitle>Cloud Integrations</CardTitle>
+          </div>
+          <CardDescription>
+            Connect your cloud storage accounts to automatically sync and
+            visualize your documents.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4">
           {/* Google Drive */}
-          <div className="flex justify-between items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+          <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-red-600 font-bold border border-red-100">
-                G
-              </div>
-              <div>
-                <div className="font-semibold text-gray-900">Google Drive</div>
-                <div className="text-xs text-gray-500">
+              <Avatar className="h-10 w-10 bg-red-50 text-red-600 border border-red-100">
+                <AvatarFallback className="bg-red-50 text-red-600 font-bold">
+                  G
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid gap-1">
+                <div className="font-semibold">Google Drive</div>
+                <div className="text-xs text-muted-foreground">
                   {isConnected("google")
                     ? `Connected as ${getEmail("google")}`
                     : "Not connected"}
                 </div>
               </div>
             </div>
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            <Button
+              variant={isConnected("google") ? "outline" : "default"}
+              className={
                 isConnected("google")
-                  ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
-                  : "bg-gray-900 text-white hover:opacity-90"
-              }`}
+                  ? "text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-700"
+                  : ""
+              }
               onClick={() => handleConnect("google")}
               disabled={isConnected("google")}
             >
               {isConnected("google") ? (
-                <span className="flex items-center gap-1">
-                  <Check size={14} /> Connected
-                </span>
+                <>
+                  <Check className="mr-2 h-4 w-4" /> Connected
+                </>
               ) : (
                 "Connect"
               )}
-            </button>
+            </Button>
           </div>
 
           {/* OneDrive */}
-          <div className="flex justify-between items-center p-4 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+          <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold border border-blue-100">
-                O
-              </div>
-              <div>
-                <div className="font-semibold text-gray-900">OneDrive</div>
-                <div className="text-xs text-gray-500">
+              <Avatar className="h-10 w-10 bg-blue-50 text-blue-600 border border-blue-100">
+                <AvatarFallback className="bg-blue-50 text-blue-600 font-bold">
+                  O
+                </AvatarFallback>
+              </Avatar>
+              <div className="grid gap-1">
+                <div className="font-semibold">OneDrive</div>
+                <div className="text-xs text-muted-foreground">
                   {isConnected("onedrive")
                     ? `Connected as ${getEmail("onedrive")}`
                     : "Not connected"}
                 </div>
               </div>
             </div>
-            <button
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            <Button
+              variant={isConnected("onedrive") ? "outline" : "default"}
+              className={
                 isConnected("onedrive")
-                  ? "bg-green-50 text-green-700 border border-green-200 cursor-default"
-                  : "bg-gray-900 text-white hover:opacity-90"
-              }`}
+                  ? "text-green-600 border-green-200 bg-green-50 hover:bg-green-100 hover:text-green-700"
+                  : ""
+              }
               onClick={() => handleConnect("onedrive")}
               disabled={isConnected("onedrive")}
             >
               {isConnected("onedrive") ? (
-                <span className="flex items-center gap-1">
-                  <Check size={14} /> Connected
-                </span>
+                <>
+                  <Check className="mr-2 h-4 w-4" /> Connected
+                </>
               ) : (
                 "Connect"
               )}
-            </button>
+            </Button>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Shield size={20} className="text-blue-600" />
-          General Preferences
-        </h3>
-
-        <div className="space-y-6">
-          <div className="flex justify-between items-center pb-6 border-b border-gray-100">
-            <div>
-              <div className="font-medium text-gray-900 text-sm">App Name</div>
-              <div className="text-xs text-gray-500 mt-1">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-blue-600" />
+            <CardTitle>General Preferences</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-1">
+              <Label className="text-base">App Name</Label>
+              <p className="text-xs text-muted-foreground">
                 The display name of your application.
-              </div>
+              </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-[220px] justify-end">
               {isEditingName ? (
-                <div className="flex items-center gap-2">
-                  <input
+                <div className="flex items-center gap-2 w-full">
+                  <Input
                     ref={nameInputRef}
-                    type="text"
                     value={tempName}
                     onChange={(e) => setTempName(e.target.value)}
                     onKeyDown={handleNameKeyDown}
                     onBlur={saveName}
-                    className="px-3 py-1.5 border border-blue-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="h-8"
                   />
-                  <button
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-green-600"
                     onClick={saveName}
-                    className="p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100"
                   >
                     <Check size={16} />
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-gray-900">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-sm">
                     {appSettings.app.name}
                   </span>
-                  <button
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-muted-foreground"
                     onClick={startEditingName}
-                    className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                   >
-                    <Edit2 size={16} />
-                  </button>
+                    <Edit2 size={14} />
+                  </Button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="flex justify-between items-center pb-6 border-b border-gray-100">
-            <div>
-              <div className="font-medium text-gray-900 text-sm">Dark Mode</div>
-              <div className="text-xs text-gray-500 mt-1">
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-1">
+              <Label className="text-base">Dark Mode</Label>
+              <p className="text-xs text-muted-foreground">
                 Switch between light and dark themes.
-              </div>
+              </p>
             </div>
-            <button
-              onClick={handleToggleTheme}
-              className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
-                appSettings.app.theme === "dark" ? "bg-blue-600" : "bg-gray-200"
-              }`}
-            >
-              <div
-                className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform duration-300 ${
-                  appSettings.app.theme === "dark" ? "left-7" : "left-1"
-                }`}
-              />
-            </button>
+            <Switch
+              checked={appSettings.app.theme === "dark"}
+              onCheckedChange={(checked) =>
+                updateSetting("theme", checked ? "dark" : "light")
+              }
+            />
           </div>
 
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="font-medium text-gray-900 text-sm">Auto Scan</div>
-              <div className="text-xs text-gray-500 mt-1">
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-1">
+              <Label className="text-base">Auto Scan</Label>
+              <p className="text-xs text-muted-foreground">
                 Automatically scan for local changes every hour.
-              </div>
+              </p>
             </div>
-            <button
-              onClick={handleToggleAutoScan}
-              className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
-                appSettings.app.autoScan ? "bg-blue-600" : "bg-gray-200"
-              }`}
-            >
-              <div
-                className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform duration-300 ${
-                  appSettings.app.autoScan ? "left-7" : "left-1"
-                }`}
-              />
-            </button>
+            <Switch
+              checked={appSettings.app.autoScan}
+              onCheckedChange={(checked) => updateSetting("autoScan", checked)}
+            />
           </div>
 
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="font-medium text-gray-900 text-sm">
-                Enable Animations
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
+          <div className="flex items-center justify-between space-x-2">
+            <div className="space-y-1">
+              <Label className="text-base">Enable Animations</Label>
+              <p className="text-xs text-muted-foreground">
                 Show animations when navigating and interacting.
-              </div>
+              </p>
             </div>
-            <button
-              onClick={handleToggleAnimations}
-              className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
-                appSettings.app.animationsEnabled
-                  ? "bg-blue-600"
-                  : "bg-gray-200"
-              }`}
-            >
-              <div
-                className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform duration-300 ${
-                  appSettings.app.animationsEnabled ? "left-7" : "left-1"
-                }`}
-              />
-            </button>
+            <Switch
+              checked={appSettings.app.animationsEnabled}
+              onCheckedChange={(checked) =>
+                updateSetting("animationsEnabled", checked)
+              }
+            />
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }

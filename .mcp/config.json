@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "node",
+      "args": ["./node_modules/shadcn/dist/index.js", "mcp"],
+      "description": "shadcn/ui component MCP server for adding and managing UI components"
+    }
+  }
+}

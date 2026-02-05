@@ -31,6 +31,25 @@ import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
 import axios from "axios";
 import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import ConfirmModal from "./ConfirmModal";
 
 interface Props {
@@ -157,7 +176,7 @@ export default function DocumentGrid({
 }: Props) {
   // ... (rest of the state and handlers)
 
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+  // const [activeMenu,] = useState<string | null>(null); // Removed as we use DropdownMenu
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(
@@ -188,42 +207,22 @@ export default function DocumentGrid({
     message: "",
     onConfirm: () => {},
   });
-  const menuRef = useRef<HTMLDivElement>(null);
-  const selectAllRef = useRef<HTMLInputElement>(null);
+  // const menuRef = useRef<HTMLDivElement>(null); // Removed
+  const selectAllRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setActiveMenu(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Update indeterminate state for select all checkbox
-  useEffect(() => {
-    if (selectAllRef.current) {
-      selectAllRef.current.indeterminate =
-        selectedIds.size > 0 && selectedIds.size < documents.length;
-    }
-  }, [selectedIds, documents]);
+  // Removed handleClickOutside effect as DropdownMenu handles it
 
   // Clear selection when documents length changes
   useEffect(() => {
     setSelectedIds(new Set());
   }, [documents.length, setSelectedIds]);
 
-  const toggleSelect = (
-    e: React.MouseEvent | React.ChangeEvent,
-    id: string,
-  ) => {
-    e.stopPropagation();
+  const toggleSelect = (checked: boolean, id: string) => {
     const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
+    if (checked) {
       newSelected.add(id);
+    } else {
+      newSelected.delete(id);
     }
     setSelectedIds(newSelected);
   };
@@ -326,7 +325,6 @@ export default function DocumentGrid({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setActiveMenu(null);
   };
 
   const handleDelete = async (doc: FileSystemItem) => {
@@ -353,7 +351,6 @@ export default function DocumentGrid({
         }
       },
     });
-    setActiveMenu(null);
   };
 
   const handlePermanentDelete = async (doc: FileSystemItem) => {
@@ -383,7 +380,6 @@ export default function DocumentGrid({
         }
       },
     });
-    setActiveMenu(null);
   };
 
   const handleRestore = async (doc: FileSystemItem) => {
@@ -401,7 +397,6 @@ export default function DocumentGrid({
           : "Failed to restore document",
       );
     }
-    setActiveMenu(null);
   };
 
   const handleShare = async (doc: FileSystemItem) => {
@@ -420,13 +415,11 @@ export default function DocumentGrid({
       console.error("Share error:", err);
       toast.error("Failed to update sharing");
     }
-    setActiveMenu(null);
   };
 
   const startRename = (doc: FileSystemItem) => {
     setRenamingId(doc.id);
     setRenameValue(doc.name);
-    setActiveMenu(null);
   };
 
   const submitRename = async (doc: FileSystemItem) => {
@@ -460,145 +453,117 @@ export default function DocumentGrid({
     const isFolder = doc.type === "folder";
     const fileDoc = doc as Document;
 
-    if (isTrash) {
-      return (
-        <div className="relative">
-          <button
-            className={`p-1.5 rounded-md transition-colors ${
-              activeMenu === doc.id
-                ? "bg-gray-100 text-gray-900"
-                : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setActiveMenu(activeMenu === doc.id ? null : doc.id);
-            }}
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 p-0 hover:bg-muted"
+            onClick={(e) => e.stopPropagation()}
           >
             <MoreVertical size={16} />
-          </button>
-
-          {activeMenu === doc.id && (
-            <div
-              ref={menuRef}
-              className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-2xl min-w-[180px] z-50 flex flex-col p-1.5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          onClick={(e) => e.stopPropagation()}
+          className="w-56"
+        >
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          {isTrash ? (
+            <>
+              <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRestore(fileDoc);
                 }}
               >
-                <RefreshCcw size={14} /> Restore
-              </div>
-              <div className="h-px bg-gray-200 my-1" />
-              <div
-                className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
-                onClick={() => handlePermanentDelete(fileDoc)}
+                <RefreshCcw className="mr-2 h-4 w-4" /> Restore
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 dark:text-red-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePermanentDelete(fileDoc);
+                }}
               >
-                <Trash2 size={14} /> Delete Forever
-              </div>
-            </div>
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Forever
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPreview(doc);
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" /> {isFolder ? "Open" : "Preview"}
+              </DropdownMenuItem>
+              {!isFolder && (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    const mouseEvent = e as unknown as React.MouseEvent;
+                    handleDownload(mouseEvent, fileDoc);
+                  }}
+                >
+                  <Download className="mr-2 h-4 w-4" /> Download
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startRename(doc);
+                }}
+              >
+                <Edit2 className="mr-2 h-4 w-4" /> Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSetClipboard)
+                    onSetClipboard({ ids: [doc.id], type: "copy" });
+                }}
+              >
+                <Copy className="mr-2 h-4 w-4" /> Copy
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onSetClipboard)
+                    onSetClipboard({ ids: [doc.id], type: "move" });
+                }}
+              >
+                <Scissors className="mr-2 h-4 w-4" /> Cut
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare(doc);
+                }}
+              >
+                <Share2
+                  className={`mr-2 h-4 w-4 ${doc.isShared ? "text-blue-500" : ""}`}
+                />
+                {doc.isShared ? "Stop Sharing" : "Share"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600 dark:text-red-400"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(fileDoc);
+                }}
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </>
           )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative">
-        <button
-          className={`p-1.5 rounded-md transition-colors ${
-            activeMenu === doc.id
-              ? "bg-gray-100 text-gray-900 dark:bg-slate-800 dark:text-white"
-              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            setActiveMenu(activeMenu === doc.id ? null : doc.id);
-          }}
-        >
-          <MoreVertical size={16} />
-        </button>
-
-        {activeMenu === doc.id && (
-          <div
-            ref={menuRef}
-            className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-2xl min-w-[180px] z-50 flex flex-col p-1.5 dark:bg-slate-900 dark:border-slate-800 dark:shadow-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-              onClick={(e) => {
-                e.stopPropagation();
-                onPreview(doc);
-                setActiveMenu(null);
-              }}
-            >
-              <Eye size={14} /> {isFolder ? "Open" : "Preview"}
-            </div>
-            {!isFolder && (
-              <div
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                onClick={(e) => handleDownload(e, fileDoc)}
-              >
-                <Download size={14} /> Download
-              </div>
-            )}
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-              onClick={(e) => {
-                e.stopPropagation();
-                startRename(doc);
-              }}
-            >
-              <Edit2 size={14} /> Rename
-            </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onSetClipboard)
-                  onSetClipboard({ ids: [doc.id], type: "copy" });
-                setActiveMenu(null);
-              }}
-            >
-              <Copy size={14} /> Copy
-            </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onSetClipboard)
-                  onSetClipboard({ ids: [doc.id], type: "move" });
-                setActiveMenu(null);
-              }}
-            >
-              <Scissors size={14} /> Cut
-            </div>
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleShare(doc);
-              }}
-            >
-              <Share2
-                size={14}
-                className={doc.isShared ? "text-blue-500" : ""}
-              />
-              {doc.isShared ? "Stop Sharing" : "Share"}
-            </div>
-            <div className="h-px bg-gray-200 dark:bg-slate-800 my-1" />
-            <div
-              className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-              onClick={() => handleDelete(fileDoc)}
-            >
-              <Trash2 size={14} /> Delete
-            </div>
-          </div>
-        )}
-      </div>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   };
 
@@ -772,136 +737,137 @@ export default function DocumentGrid({
 
   if (viewType === "compact") {
     return (
-      <div className="flex flex-col">
-        <div className="flex items-center px-4 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100/50 mb-1 dark:border-slate-800 dark:text-slate-500">
-          <div className="w-8 flex items-center justify-center">
-            <input
-              ref={selectAllRef}
-              type="checkbox"
-              className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
-              checked={
-                selectedIds.size === documents.length && documents.length > 0
-              }
-              onChange={toggleSelectAll}
-            />
-          </div>
-          <div className="w-8"></div>
-          <div
-            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
-            onClick={() => onSort?.("name")}
-          >
-            Name
-            {sortField === "name" &&
-              (sortOrder === "asc" ? (
-                <ArrowUp size={10} />
-              ) : (
-                <ArrowDown size={10} />
-              ))}
-          </div>
-          <div className="w-20 text-right px-2">Size</div>
-          <div
-            className="w-28 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
-            onClick={() => onSort?.("date")}
-          >
-            Date
-            {sortField === "date" &&
-              (sortOrder === "asc" ? (
-                <ArrowUp size={10} />
-              ) : (
-                <ArrowDown size={10} />
-              ))}
-          </div>
-          <div className="w-8 text-right"></div>
-        </div>
-        {documents.map((doc) => {
-          const { icon: Icon, color, bg } = getFileIcon(doc);
-          const isSelected = selectedIds.has(doc.id);
-
-          return (
-            <div
-              key={doc.id}
-              draggable={doc.type !== "folder"}
-              onDragStart={(e) => handleDragStart(e, doc.id)}
-              onDragOver={(e) =>
-                handleDragOver(e, doc.id, doc.type === "folder")
-              }
-              onDragLeave={() => setDropTargetId(null)}
-              onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
-              className={`group flex items-center py-1 px-4 cursor-pointer transition-colors border-l-2
-                ${
-                  isSelected
-                    ? "bg-blue-50 border-blue-500 dark:bg-blue-900/20 dark:border-blue-500"
-                    : dropTargetId === doc.id
-                      ? "bg-amber-50 border-amber-500 dark:bg-amber-900/20 dark:border-amber-500"
-                      : "bg-white border-transparent hover:bg-gray-50 hover:border-blue-200 dark:bg-slate-950 dark:hover:bg-slate-900 dark:hover:border-blue-900"
-                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
-              onClick={() => {
-                if (renamingId !== doc.id) {
-                  if ((doc as Document).status === "corrupted") {
-                    toast.error("This file is corrupted and cannot be opened");
-                    return;
-                  }
-                  onPreview(doc);
-                }
-              }}
-            >
-              <div
-                className="w-8 flex items-center justify-center"
-                onClick={(e) => toggleSelect(e, doc.id)}
-              >
-                <input
-                  type="checkbox"
-                  className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
-                  checked={isSelected}
-                  onChange={() => {}}
-                />
-              </div>
-
-              <div className="w-8">
-                <div
-                  className={`w-6 h-6 ${bg} rounded flex items-center justify-center ${color} dark:bg-opacity-20`}
+      <div className="flex flex-col gap-4">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 text-center">
+                  <Checkbox
+                    checked={
+                      selectedIds.size === documents.length &&
+                      documents.length > 0
+                    }
+                    onCheckedChange={toggleSelectAll}
+                    ref={selectAllRef as React.RefObject<HTMLButtonElement>}
+                  />
+                </TableHead>
+                <TableHead className="w-12"></TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-foreground"
+                  onClick={() => onSort?.("name")}
                 >
-                  {(doc as Document).status === "corrupted" ? (
-                    <AlertTriangle size={12} className="text-red-500" />
-                  ) : (
-                    <Icon size={12} />
-                  )}
-                </div>
-              </div>
+                  Name
+                  {sortField === "name" &&
+                    (sortOrder === "asc" ? (
+                      <ArrowUp className="ml-2 inline h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="ml-2 inline h-3 w-3" />
+                    ))}
+                </TableHead>
+                <TableHead className="w-24 text-right">Size</TableHead>
+                <TableHead
+                  className="w-32 cursor-pointer hover:text-foreground"
+                  onClick={() => onSort?.("date")}
+                >
+                  Date
+                  {sortField === "date" &&
+                    (sortOrder === "asc" ? (
+                      <ArrowUp className="ml-2 inline h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="ml-2 inline h-3 w-3" />
+                    ))}
+                </TableHead>
+                <TableHead className="w-12"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {documents.map((doc) => {
+                const { icon: Icon, color, bg } = getFileIcon(doc);
+                const isSelected = selectedIds.has(doc.id);
 
-              <div className="flex-1 min-w-0 pr-4">
-                {renamingId === doc.id ? (
-                  renderRenameInput(doc as Document)
-                ) : (
-                  <div
-                    className="text-xs font-medium text-gray-700 truncate"
-                    title={doc.name}
+                return (
+                  <TableRow
+                    key={doc.id}
+                    draggable={doc.type !== "folder"}
+                    onDragStart={(e) => handleDragStart(e, doc.id)}
+                    onDragOver={(e) =>
+                      handleDragOver(e, doc.id, doc.type === "folder")
+                    }
+                    onDrop={(e) =>
+                      doc.type === "folder" && handleDrop(e, doc.path)
+                    }
+                    className={`
+                      ${isSelected ? "bg-muted/50" : ""}
+                      ${dropTargetId === doc.id ? "bg-amber-50 dark:bg-amber-900/20" : ""}
+                      ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-50" : ""}
+                    `}
+                    onClick={() => {
+                      if (renamingId !== doc.id) {
+                        if ((doc as Document).status === "corrupted") {
+                          toast.error(
+                            "This file is corrupted and cannot be opened",
+                          );
+                          return;
+                        }
+                        onPreview(doc);
+                      }
+                    }}
                   >
-                    {doc.name}
-                    {doc.isShared && (
-                      <Share2
-                        size={10}
-                        className="ml-1.5 text-blue-500 inline"
+                    <TableCell
+                      className="text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) =>
+                          toggleSelect(checked === true, doc.id)
+                        }
                       />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="w-20 text-right px-2 text-[10px] text-gray-400 font-mono">
-                {formatFileSize((doc as Document).fileSize)}
-              </div>
-
-              <div className="w-28 text-[10px] text-gray-400">
-                {format(new Date(doc.lastModified), "MMM d, yyyy")}
-              </div>
-
-              <div className="w-8 flex justify-end">
-                {renderActionsMenu(doc)}
-              </div>
-            </div>
-          );
-        })}
+                    </TableCell>
+                    <TableCell className="p-2">
+                      <div
+                        className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color} dark:bg-opacity-20`}
+                      >
+                        {(doc as Document).status === "corrupted" ? (
+                          <AlertTriangle size={14} className="text-red-500" />
+                        ) : (
+                          <Icon size={14} />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {renamingId === doc.id ? (
+                        renderRenameInput(doc as Document)
+                      ) : (
+                        <div
+                          className="flex items-center gap-2"
+                          title={doc.name}
+                        >
+                          <span className="truncate max-w-[300px]">
+                            {doc.name}
+                          </span>
+                          {doc.isShared && (
+                            <Share2 size={12} className="text-blue-500" />
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground font-mono">
+                      {formatFileSize((doc as Document).fileSize)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {renderActionsMenu(doc)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
         <AnimatePresence>{bulkActionsBar}</AnimatePresence>
         <ConfirmModal
           isOpen={confirmConfig.isOpen}
@@ -918,195 +884,201 @@ export default function DocumentGrid({
 
   if (viewType === "list") {
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100 dark:border-slate-800 dark:text-slate-500">
-          <div className="w-10 flex items-center justify-center">
-            <input
-              ref={selectAllRef}
-              type="checkbox"
-              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
-              checked={
-                selectedIds.size === documents.length && documents.length > 0
-              }
-              onChange={toggleSelectAll}
-            />
-          </div>
-          <div className="w-10"></div>
-          <div
-            className="flex-1 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
-            onClick={() => onSort?.("name")}
-          >
-            Name
-            {sortField === "name" &&
-              (sortOrder === "asc" ? (
-                <ArrowUp size={12} />
-              ) : (
-                <ArrowDown size={12} />
-              ))}
-          </div>
-          <div className="w-32">Tags</div>
-          <div
-            className="w-24 px-2 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header text-right justify-end dark:hover:text-white"
-            onClick={() => onSort?.("name")} // Reuse sort or add size sort later
-          >
-            Size
-          </div>
-          <div
-            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
-            onClick={() => onSort?.("category")}
-          >
-            Category
-            {sortField === "category" &&
-              (sortOrder === "asc" ? (
-                <ArrowUp size={12} />
-              ) : (
-                <ArrowDown size={12} />
-              ))}
-          </div>
-          <div
-            className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header dark:hover:text-white"
-            onClick={() => onSort?.("date")}
-          >
-            Last Modified
-            {sortField === "date" &&
-              (sortOrder === "asc" ? (
-                <ArrowUp size={12} />
-              ) : (
-                <ArrowDown size={12} />
-              ))}
-          </div>
-          <div className="w-32">Source</div>
-          <div className="w-10 text-right">Actions</div>
-        </div>
-        {documents.map((doc) => {
-          const { icon: Icon, color, bg } = getFileIcon(doc);
-          const isSelected = selectedIds.has(doc.id);
-          const isNew = isRecentlyUploaded(doc.uploadedAt);
-
-          return (
-            <div
-              key={doc.id}
-              draggable={doc.type !== "folder"}
-              onDragStart={(e) => handleDragStart(e, doc.id)}
-              onDragOver={(e) =>
-                handleDragOver(e, doc.id, doc.type === "folder")
-              }
-              onDragLeave={() => setDropTargetId(null)}
-              onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
-              className={`group flex items-center rounded-lg border p-4 cursor-pointer transition-all duration-200 relative
-                ${
-                  isSelected
-                    ? "bg-blue-50/50 border-blue-500/50 shadow-sm dark:bg-blue-900/20 dark:border-blue-500/50"
-                    : dropTargetId === doc.id
-                      ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02] dark:bg-amber-900/20 dark:border-amber-500"
-                      : isRecentlyUploaded(doc.uploadedAt)
-                        ? "bg-blue-50/30 border-blue-200/50 shadow-sm dark:bg-blue-900/10 dark:border-blue-900/30"
-                        : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30 dark:bg-slate-900 dark:border-slate-800 dark:hover:border-blue-900/50"
-                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${shouldPulse(doc.uploadedAt) ? "animate-pulse-blue ring-2 ring-blue-500/10" : ""}`}
-              style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
-              onClick={() => {
-                if (renamingId !== doc.id) {
-                  if ((doc as Document).status === "corrupted") {
-                    toast.error("This file is corrupted and cannot be opened");
-                    return;
-                  }
-                  onPreview(doc);
-                }
-              }}
-            >
-              <div
-                className="w-10 flex items-center justify-center"
-                onClick={(e) => toggleSelect(e, doc.id)}
-              >
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  checked={isSelected}
-                  onChange={() => {}} // Handled by div click
-                />
-              </div>
-
-              <div className="w-10">
-                <div
-                  className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color} dark:bg-opacity-20`}
+      <div className="flex flex-col gap-4">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12 text-center">
+                  <Checkbox
+                    checked={
+                      selectedIds.size === documents.length &&
+                      documents.length > 0
+                    }
+                    onCheckedChange={toggleSelectAll}
+                    ref={selectAllRef as React.RefObject<HTMLButtonElement>}
+                  />
+                </TableHead>
+                <TableHead className="w-12"></TableHead>
+                <TableHead
+                  className="cursor-pointer hover:text-foreground"
+                  onClick={() => onSort?.("name")}
                 >
-                  {(doc as Document).status === "corrupted" ? (
-                    <AlertTriangle size={16} className="text-red-500" />
-                  ) : (
-                    <Icon size={16} />
-                  )}
-                </div>
-              </div>
+                  Name
+                  {sortField === "name" &&
+                    (sortOrder === "asc" ? (
+                      <ArrowUp className="ml-2 inline h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="ml-2 inline h-3 w-3" />
+                    ))}
+                </TableHead>
+                <TableHead className="w-48 hidden md:table-cell">
+                  Tags
+                </TableHead>
+                <TableHead className="w-24 text-right hidden sm:table-cell">
+                  Size
+                </TableHead>
+                <TableHead
+                  className="w-32 hidden md:table-cell cursor-pointer hover:text-foreground"
+                  onClick={() => onSort?.("category")}
+                >
+                  Category
+                  {sortField === "category" &&
+                    (sortOrder === "asc" ? (
+                      <ArrowUp className="ml-2 inline h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="ml-2 inline h-3 w-3" />
+                    ))}
+                </TableHead>
+                <TableHead
+                  className="w-32 cursor-pointer hover:text-foreground"
+                  onClick={() => onSort?.("date")}
+                >
+                  Modified
+                  {sortField === "date" &&
+                    (sortOrder === "asc" ? (
+                      <ArrowUp className="ml-2 inline h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="ml-2 inline h-3 w-3" />
+                    ))}
+                </TableHead>
+                <TableHead className="w-24 hidden lg:table-cell">
+                  Source
+                </TableHead>
+                <TableHead className="w-12 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {documents.map((doc) => {
+                const { icon: Icon, color, bg } = getFileIcon(doc);
+                const isSelected = selectedIds.has(doc.id);
+                const isNew = isRecentlyUploaded(doc.uploadedAt);
 
-              <div className="flex-1 min-w-0 pr-4">
-                {renamingId === doc.id ? (
-                  renderRenameInput(doc as Document)
-                ) : (
-                  <div className="flex flex-col">
-                    <div
-                      className="text-sm font-semibold text-gray-900 truncate dark:text-white"
-                      title={doc.name}
+                return (
+                  <TableRow
+                    key={doc.id}
+                    draggable={doc.type !== "folder"}
+                    onDragStart={(e) => handleDragStart(e, doc.id)}
+                    onDragOver={(e) =>
+                      handleDragOver(e, doc.id, doc.type === "folder")
+                    }
+                    onDrop={(e) =>
+                      doc.type === "folder" && handleDrop(e, doc.path)
+                    }
+                    className={`
+                      ${isSelected ? "bg-muted/50" : ""}
+                      ${dropTargetId === doc.id ? "bg-amber-50 dark:bg-amber-900/20" : ""}
+                      ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-50" : ""}
+                      ${shouldPulse(doc.uploadedAt) ? "animate-pulse" : ""}
+                    `}
+                    onClick={() => {
+                      if (renamingId !== doc.id) {
+                        if ((doc as Document).status === "corrupted") {
+                          toast.error(
+                            "This file is corrupted and cannot be opened",
+                          );
+                          return;
+                        }
+                        onPreview(doc);
+                      }
+                    }}
+                  >
+                    <TableCell
+                      className="text-center"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {doc.name}
-                      {doc.isShared && (
-                        <Share2
-                          size={12}
-                          className="ml-2 text-blue-500 inline"
-                        />
-                      )}
-                      {isNew && (
-                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold bg-blue-600 text-white animate-in zoom-in-50 duration-300">
-                          NEW
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-32 flex flex-wrap gap-1">
-                {(() => {
-                  try {
-                    const tagsArray = JSON.parse(doc.tags || "[]");
-                    return tagsArray.map((tag: string, idx: number) => (
-                      <span
-                        key={idx}
-                        className="px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-medium border border-gray-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700"
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) =>
+                          toggleSelect(checked === true, doc.id)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell className="p-2">
+                      <div
+                        className={`w-8 h-8 ${bg} rounded flex items-center justify-center ${color} dark:bg-opacity-20`}
                       >
-                        {tag}
+                        {(doc as Document).status === "corrupted" ? (
+                          <AlertTriangle size={14} className="text-red-500" />
+                        ) : (
+                          <Icon size={14} />
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {renamingId === doc.id ? (
+                        renderRenameInput(doc as Document)
+                      ) : (
+                        <div className="flex flex-col">
+                          <div
+                            className="flex items-center gap-2"
+                            title={doc.name}
+                          >
+                            <span className="truncate max-w-[200px]">
+                              {doc.name}
+                            </span>
+                            {doc.isShared && (
+                              <Share2 size={12} className="text-blue-500" />
+                            )}
+                            {isNew && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-600 text-white">
+                                NEW
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {(() => {
+                          try {
+                            const tagsArray = JSON.parse(doc.tags || "[]");
+                            return tagsArray
+                              .slice(0, 2)
+                              .map((tag: string, idx: number) => (
+                                <span
+                                  key={idx}
+                                  className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] border"
+                                >
+                                  {tag}
+                                </span>
+                              ));
+                          } catch {
+                            return null;
+                          }
+                        })()}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground font-mono hidden sm:table-cell">
+                      {formatFileSize((doc as Document).fileSize)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                        {doc.category || "General"}
                       </span>
-                    ));
-                  } catch {
-                    return null;
-                  }
-                })()}
-              </div>
-
-              <div className="w-24 text-right px-2 text-xs text-gray-500 font-mono">
-                {formatFileSize((doc as Document).fileSize)}
-              </div>
-
-              <div className="w-40">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                  {doc.category}
-                </span>
-              </div>
-
-              <div className="w-40 text-xs text-gray-500 dark:text-slate-400">
-                {format(new Date(doc.lastModified), "MMM d, yyyy")}
-              </div>
-
-              <div className="w-32 flex items-center gap-1.5 text-xs text-gray-500 capitalize dark:text-slate-400">
-                <ExternalLink size={12} className="opacity-50" />
-                {doc.cloudSource}
-              </div>
-
-              <div className="w-10 flex justify-end">
-                {renderActionsMenu(doc)}
-              </div>
-            </div>
-          );
-        })}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground capitalize hidden lg:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        <ExternalLink size={12} className="opacity-50" />
+                        {doc.cloudSource || "Local"}
+                      </div>
+                    </TableCell>
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {renderActionsMenu(doc)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
         <AnimatePresence>{bulkActionsBar}</AnimatePresence>
         <ConfirmModal
           isOpen={confirmConfig.isOpen}
@@ -1124,23 +1096,21 @@ export default function DocumentGrid({
   return (
     <div className="flex flex-col gap-4">
       {/* Grid View Header with Select All */}
-      <div className="flex items-center px-2 py-2 border-b border-gray-100 dark:border-slate-800">
-        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:text-gray-900 transition-colors dark:text-slate-400 dark:hover:text-white">
-          <input
-            ref={selectAllRef}
-            type="checkbox"
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer dark:bg-slate-800 dark:border-slate-700"
+      <div className="flex items-center px-2 py-2 border-b">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Checkbox
             checked={
               selectedIds.size === documents.length && documents.length > 0
             }
-            onChange={toggleSelectAll}
+            onCheckedChange={toggleSelectAll}
+            ref={selectAllRef as React.RefObject<HTMLButtonElement>}
           />
           <span className="font-medium">
             {selectedIds.size > 0
               ? `${selectedIds.size} of ${documents.length} selected`
               : "Select all"}
           </span>
-        </label>
+        </div>
       </div>
 
       <motion.div
@@ -1157,232 +1127,154 @@ export default function DocumentGrid({
               }
             : { duration: 0 }
         }
-        className="flex flex-wrap gap-6 py-4 relative items-stretch"
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
       >
         <AnimatePresence mode="popLayout">
           {documents.map((doc) => {
             const { icon: Icon, color, bg } = getFileIcon(doc);
             const isSelected = selectedIds.has(doc.id);
-            const isFolder = doc.type === "folder";
             const isNew = isRecentlyUploaded(doc.uploadedAt);
             const isPulsing = shouldPulse(doc.uploadedAt);
 
             return (
               <motion.div
                 layout
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
                 transition={
                   animationsEnabled
                     ? {
-                        layout: {
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 40,
-                          mass: 0.8,
-                        },
-                        opacity: { duration: 0.2, ease: "easeOut" },
+                        duration: 0.2,
                       }
                     : { duration: 0 }
                 }
                 key={doc.id}
-                style={{
-                  flex: "1 1 280px",
-                  maxWidth: "min(450px, 100%)",
-                  zIndex: activeMenu === doc.id ? 999 : 1,
-                }}
                 draggable={doc.type !== "folder"}
-                /* eslint-disable @typescript-eslint/no-explicit-any */
-                onDragStart={(e: any) => handleDragStart(e, doc.id)}
-                onDragOver={(e: any) =>
-                  handleDragOver(e, doc.id, doc.type === "folder")
+                onDragStart={(e) =>
+                  handleDragStart(e as unknown as React.DragEvent, doc.id)
+                }
+                onDragOver={(e) =>
+                  handleDragOver(
+                    e as unknown as React.DragEvent,
+                    doc.id,
+                    doc.type === "folder",
+                  )
                 }
                 onDragLeave={() => setDropTargetId(null)}
-                onDrop={(e: any) =>
-                  doc.type === "folder" && handleDrop(e, doc.path)
+                onDrop={(e) =>
+                  doc.type === "folder" &&
+                  handleDrop(e as unknown as React.DragEvent, doc.path)
                 }
-                /* eslint-enable @typescript-eslint/no-explicit-any */
-                className={`group rounded-3xl border p-6 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative
-                ${
-                  isSelected
-                    ? "bg-blue-50/90 border-blue-200 shadow-lg ring-2 ring-blue-500/20 dark:bg-blue-900/30 dark:border-blue-500/50 dark:shadow-blue-900/20"
-                    : dropTargetId === doc.id
-                      ? "bg-amber-50 border-amber-500 shadow-xl scale-[1.02] z-20 dark:bg-amber-900/30 dark:border-amber-500"
-                      : "bg-white/80 backdrop-blur-sm border-gray-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 hover:border-blue-200/50 hover:bg-white dark:bg-slate-900 dark:border-slate-800 dark:shadow-none dark:hover:bg-slate-800/80 dark:hover:border-slate-700"
-                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${isPulsing ? "animate-pulse-blue border-blue-400 ring-4 ring-blue-500/10" : ""}`}
-                onClick={() => {
-                  if (renamingId !== doc.id) {
-                    if ((doc as Document).status === "corrupted") {
-                      toast.error(
-                        "This file is corrupted and cannot be opened",
-                      );
-                      return;
-                    }
-                    onPreview(doc);
-                  }
-                }}
               >
-                {/* Selection Overlay Background when Selected */}
-                {isSelected && (
-                  <div className="absolute inset-0 bg-blue-500/5 rounded-3xl pointer-events-none" />
-                )}
-
-                <div className="flex justify-between items-start mb-auto relative">
-                  <div className="flex items-start gap-4 w-full">
-                    <div
-                      className="pt-1.5"
-                      onClick={(e) => toggleSelect(e, doc.id)}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-lg border-2 transition-all duration-300 flex items-center justify-center
-                      ${isSelected ? "bg-blue-600 border-blue-600 shadow-md shadow-blue-500/30" : "border-gray-200 bg-white group-hover:border-blue-400/50 opacity-40 group-hover:opacity-100 shadow-sm dark:bg-slate-800 dark:border-slate-700"}
-                     `}
-                      >
-                        {isSelected && (
-                          <Check size={14} className="text-white" />
-                        )}
-                      </div>
-                      <input
-                        type="checkbox"
-                        className="hidden"
+                <Card
+                  className={`
+                  relative group cursor-pointer transition-all duration-300
+                  ${isSelected ? "ring-2 ring-primary border-primary bg-accent" : "hover:border-primary/50 hover:shadow-md"}
+                  ${dropTargetId === doc.id ? "ring-2 ring-amber-500 bg-amber-50 dark:bg-amber-950/30" : ""}
+                  ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}
+                  ${isPulsing ? "animate-pulse" : ""}
+                `}
+                  onClick={() => {
+                    if (renamingId !== doc.id) {
+                      if ((doc as Document).status === "corrupted") {
+                        toast.error(
+                          "This file is corrupted and cannot be opened",
+                        );
+                        return;
+                      }
+                      onPreview(doc);
+                    }
+                  }}
+                >
+                  <CardContent className="p-4 flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <Checkbox
                         checked={isSelected}
-                        onChange={() => {}}
+                        onCheckedChange={(checked) =>
+                          toggleSelect(checked === true, doc.id)
+                        }
+                        onClick={(e) => e.stopPropagation()}
+                        className={`data-[state=checked]:bg-primary ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}
                       />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        {renderActionsMenu(doc)}
+                      </div>
                     </div>
 
-                    <div
-                      className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 dark:bg-opacity-20`}
-                    >
-                      <div className="absolute inset-0 bg-white/20 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                      {(doc as Document).status === "corrupted" && (
-                        <div className="absolute -top-1.5 -right-1.5 bg-red-500 rounded-full p-1 border-2 border-white shadow-md z-20 animate-bounce">
-                          <AlertTriangle size={12} className="text-white" />
-                        </div>
-                      )}
-                      <Icon size={32} strokeWidth={1.5} />
-                      {doc.isShared && (
-                        <div className="absolute -bottom-2 -right-2 bg-blue-600 rounded-lg p-1.5 border-2 border-white dark:border-slate-800 shadow-xl z-20">
-                          <Share2
-                            size={12}
-                            className="text-white fill-white/20"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="ml-auto">{renderActionsMenu(doc)}</div>
-                  </div>
-                </div>
-
-                <div className="flex-1 flex flex-col gap-4 relative">
-                  {renamingId === doc.id ? (
-                    renderRenameInput(doc as Document)
-                  ) : (
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col items-center justify-center py-2 gap-3">
                       <div
-                        className="text-[17px] font-bold text-gray-900 truncate leading-tight group-hover:text-blue-600 transition-colors flex items-center gap-2 dark:text-white dark:group-hover:text-blue-400"
-                        title={doc.name}
+                        className={`w-16 h-16 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-transform group-hover:scale-105`}
                       >
-                        <span className="truncate">{doc.name}</span>
-                        {isNew && (
-                          <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-600 text-white animate-bounce-subtle shadow-lg shadow-blue-500/30">
-                            NEW
-                          </span>
+                        {(doc as Document).status === "corrupted" ? (
+                          <AlertTriangle
+                            size={32}
+                            className="text-destructive"
+                          />
+                        ) : (
+                          <Icon size={32} strokeWidth={1.5} />
+                        )}
+                        {doc.isShared && (
+                          <div className="absolute -bottom-1 -right-1 bg-blue-600 rounded-full p-1 border-2 border-background shadow-sm text-white">
+                            <Share2 size={10} />
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-[11px] text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2 dark:text-slate-500">
-                          <span className="truncate max-w-[120px]">
-                            {doc.category || "General"}
+                    </div>
+
+                    <div className="text-center">
+                      {renamingId === doc.id ? (
+                        renderRenameInput(doc as Document)
+                      ) : (
+                        <div className="flex items-center justify-center gap-1">
+                          <span
+                            className="font-semibold text-sm truncate max-w-[150px]"
+                            title={doc.name}
+                          >
+                            {doc.name}
                           </span>
-                          {doc.cloudSource && (
-                            <>
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400/30" />
-                              <span className="capitalize text-blue-500/80">
-                                {doc.cloudSource}
-                              </span>
-                            </>
+                          {isNew && (
+                            <span className="text-[10px] font-bold bg-blue-600 text-white px-1.5 rounded-full">
+                              NEW
+                            </span>
                           )}
                         </div>
+                      )}
+                      <div className="flex items-center justify-center gap-2 mt-1 text-xs text-muted-foreground">
+                        <span>
+                          {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                        </span>
                       </div>
                     </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100/80 mt-auto dark:border-slate-800">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="text-[11px] text-gray-500 font-medium dark:text-slate-400">
-                        {format(new Date(doc.lastModified), "MMM d, yyyy")}
-                      </div>
-                      {doc.type === "file" && (
-                        <div className="text-[11px] text-gray-900/40 font-mono dark:text-slate-500">
-                          {formatFileSize((doc as Document).fileSize)}
-                        </div>
+                  </CardContent>
+                  <CardFooter className="p-3 pt-0 flex justify-between items-center text-xs text-muted-foreground">
+                    <span className="font-mono">
+                      {doc.type === "file" &&
+                        formatFileSize((doc as Document).fileSize)}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {(doc as Document).encrypted && (
+                        <Lock size={10} className="text-emerald-500" />
                       )}
+                      <span className="bg-muted px-2 py-0.5 rounded-full text-[10px] uppercase font-bold">
+                        {doc.category || "General"}
+                      </span>
                     </div>
-
-                    <div className="flex flex-col items-end gap-1.5">
-                      {isFolder ? (
-                        <div className="text-[10px] bg-amber-50 text-amber-600 border border-amber-100 font-bold px-3 py-1 rounded-full uppercase tracking-tighter shadow-sm dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900/50">
-                          Folder
-                        </div>
-                      ) : (
-                        doc.encrypted && (
-                          <div className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-100 font-bold px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900/50">
-                            <Lock size={12} className="opacity-80" />
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Tags in Grid View */}
-                  {doc.tags && doc.tags !== "[]" && (
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {(() => {
-                        try {
-                          const tagsArray = JSON.parse(doc.tags || "[]");
-                          return (
-                            <>
-                              {tagsArray
-                                .slice(0, 3)
-                                .map((tag: string, idx: number) => (
-                                  <span
-                                    key={idx}
-                                    className="px-2 py-1 rounded-lg bg-gray-50 text-gray-500 text-[10px] font-bold border border-gray-100 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-100 transition-colors dark:bg-slate-800 dark:text-slate-400 dark:border-slate-800 dark:hover:bg-slate-700"
-                                  >
-                                    #{tag}
-                                  </span>
-                                ))}
-                              {tagsArray.length > 3 && (
-                                <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg dark:bg-slate-800 dark:text-slate-500">
-                                  +{tagsArray.length - 3}
-                                </span>
-                              )}
-                            </>
-                          );
-                        } catch {
-                          return null;
-                        }
-                      })()}
-                    </div>
-                  )}
-                </div>
+                  </CardFooter>
+                </Card>
               </motion.div>
             );
           })}
         </AnimatePresence>
-        <AnimatePresence>{bulkActionsBar}</AnimatePresence>
-        <ConfirmModal
-          isOpen={confirmConfig.isOpen}
-          title={confirmConfig.title}
-          message={confirmConfig.message}
-          onConfirm={confirmConfig.onConfirm}
-          onClose={() =>
-            setConfirmConfig((prev) => ({ ...prev, isOpen: false }))
-          }
-        />
       </motion.div>
+      <AnimatePresence>{bulkActionsBar}</AnimatePresence>
+      <ConfirmModal
+        isOpen={confirmConfig.isOpen}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        onConfirm={confirmConfig.onConfirm}
+        onClose={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }

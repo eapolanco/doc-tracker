@@ -55,20 +55,18 @@ function App() {
       <Toaster position="top-right" richColors closeButton />
       <DashboardShell navItems={navItems} header={<Breadcrumbs />}>
         <LayoutGroup>
-          <div className="flex flex-1 overflow-hidden relative">
-            <Routes>
-              <Route
-                path="/"
-                element={<Navigate to="/app?viewid=docs_all" replace />}
-              />
-              <Route
-                path="/app"
-                element={
-                  <ViewRenderer key={activeTab} model={model} type={viewType} />
-                }
-              />
-            </Routes>
-          </div>
+          <Routes>
+            <Route
+              path="/"
+              element={<Navigate to="/app?viewid=docs_all" replace />}
+            />
+            <Route
+              path="/app"
+              element={
+                <ViewRenderer key={activeTab} model={model} type={viewType} />
+              }
+            />
+          </Routes>
         </LayoutGroup>
       </DashboardShell>
     </MotionConfig>
