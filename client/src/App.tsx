@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { LayoutGroup, MotionConfig } from "framer-motion";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "sonner";
 import { manifestLoader } from "@/core/manifest/ManifestLoader";
@@ -9,69 +10,38 @@ import { useSettingsStore } from "@/store/settingsStore";
 import { useUIStore } from "@/store/uiStore";
 
 function App() {
-  const { appSettings, fetchSettings } = useSettingsStore();
+  const { appSettings } = useSettingsStore(); // fetchSettings removed, handled by React Query in components or here
   const { activeTab, model, viewType, navigate } = useUIStore();
+  const location = useLocation();
 
-  // Event Bus Listener for Navigation (Bridge until all components use the store)
+  // Sync Router with Store
   useEffect(() => {
-    const handleNavigation = (featureId: string) => {
-      navigate(featureId);
-    };
+    const params = new URLSearchParams(location.search);
+    let viewId = params.get("viewid");
 
+    // Normalize viewid for documents (all, local, etc -> docs_all, docs_local)
+    if (viewId && ["all", "local", "onedrive", "google"].includes(viewId)) {
+      viewId = `docs_${viewId}`;
+    }
+
+    if (viewId && viewId !== activeTab) {
+      navigate(viewId);
+    }
+  }, [location, navigate, activeTab]);
+
+  // Event Bus Listener (Bridge)
+  useEffect(() => {
+    const handleNavigation = (featureId: string) => navigate(featureId);
     eventBus.on("navigation:feature", handleNavigation);
     return () => eventBus.off("navigation:feature", handleNavigation);
   }, [navigate]);
 
-  // Update URL Parameters when state changes
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-
-    // Legacy viewid handling for documents
-    if (activeTab.startsWith("docs_")) {
-      params.set("viewid", activeTab.replace("docs_", ""));
-    } else {
-      params.set("viewid", activeTab);
-    }
-
-    // Clean up older params if not in docs
-    if (!activeTab.startsWith("docs_")) {
-      params.delete("id");
-      params.delete("view");
-    }
-
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({}, "", newUrl);
-  }, [activeTab]);
-
   // Apply Theme
   useEffect(() => {
-    if (appSettings?.app?.theme === "dark") {
+    if (appSettings?.app?.theme === "dark")
       document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
+    else document.documentElement.classList.remove("dark");
   }, [appSettings?.app?.theme]);
-
-  // Update Page Title and Meta
-  useEffect(() => {
-    const appName = appSettings?.app?.name || "DocTracker";
-    document.title = `${appName} | Smart Document Management`;
-
-    let metaDesc = document.querySelector('meta[name="description"]');
-    if (!metaDesc) {
-      metaDesc = document.createElement("meta");
-      metaDesc.setAttribute("name", "description");
-      document.head.appendChild(metaDesc);
-    }
-    metaDesc.setAttribute(
-      "content",
-      `Manage your documents with ${appName}. Secure, organized, and fast document tracking application.`,
-    );
-  }, [appSettings?.app?.name]);
-
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
 
   const navItems = useMemo(() => manifestLoader.getNavItems(), []);
 
@@ -88,7 +58,23 @@ function App() {
         <main className="flex-1 overflow-hidden flex flex-col">
           <LayoutGroup>
             <div className="flex flex-1 overflow-hidden relative">
-              <ViewRenderer key={activeTab} model={model} type={viewType} />
+              <Routes>
+                <Route
+                  path="/"
+                  element={<Navigate to="/app?viewid=docs_all" replace />}
+                />
+                <Route
+                  path="/app"
+                  element={
+                    <ViewRenderer
+                      key={activeTab}
+                      model={model}
+                      type={viewType}
+                    />
+                  }
+                />
+                {/* Add more specific routes if needed, but the modular arch loves the dynamic ViewRenderer */}
+              </Routes>
             </div>
           </LayoutGroup>
         </main>

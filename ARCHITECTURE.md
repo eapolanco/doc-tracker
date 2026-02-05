@@ -1,132 +1,102 @@
-# Odoo-Style Modular View Architecture
+# DocTracker Architecture
 
 ## Overview
 
-This implementation provides a metadata-driven, extensible view system inspired by Odoo's architecture. Features can be added or removed without modifying core code.
+DocTracker uses a metadata-driven, extensible modular architecture inspired by Odoo, combined with modern React patterns for state management and routing.
 
-## Key Components
+---
 
-### 1. View Registry (`core/registry/ViewRegistry.ts`)
+## 1. Modular View System
 
-- Central manager for all view definitions
-- Supports view inheritance and patching
-- Caches resolved views for performance
+### View Registry (`core/registry/ViewRegistry.ts`)
 
-### 2. Manifest System (`core/manifest/`)
+- Central manager for all view definitions.
+- Supports view inheritance and declarative patching (insert_after, replace, etc.).
 
-- Each feature has a `manifest.ts` file declaring:
-  - Dependencies
-  - Navigation items
-  - View definitions
-  - Models
-- `ManifestLoader` handles dependency resolution and loading order
+### Manifest System (`core/manifest/`)
 
-### 3. View Renderer (`components/views/ViewRenderer.tsx`)
+- Each feature defines a `manifest.ts` file declaring dependencies, navigation items, and view metadata.
+- `ManifestLoader` resolves the loading order based on feature dependencies.
 
-- Generic component that maps view metadata to concrete implementations
-- Supports: List, Form, Kanban, and Main (custom) views
+### View Renderer (`components/views/ViewRenderer.tsx`)
 
-### 4. View Types
+- A dynamic engine that maps view metadata to concrete UI implementations (List, Form, Kanban, etc.).
 
-- **ListView**: Table-based data display
-- **FormView**: Form-based data entry
-- **KanbanView**: Card-based workflow display
-- **MainView**: Wrapper for custom React components (backward compatibility)
+---
 
-## How It Works
+## 2. State Management Strategy
 
-### Adding a New Feature
+We distinguish between **Client State** (transient UI settings) and **Server State** (data persisted on the backend).
 
-1. Create folder: `features/my_feature/`
-2. Add `manifest.ts`:
+### Client State (Zustand)
+
+Located in `store/`, we use specialized stores for predictable state updates:
+
+- **`uiStore`**: Manages global UI state (active tab, sidebar state, view types, search queries). Uses `localStorage` persistence for preferences.
+- **`settingsStore`**: Synchronizes application-wide settings (theme, animations, app name).
+- **`documentStore`**: Handles transient document state like current selection and clipboard data (copy/move).
+
+### Server State (React Query)
+
+We use **TanStack Query** for data fetching, caching, and synchronization:
+
+- **Fetching**: Documents, accounts, and settings are fetched via `useQuery` hooks.
+- **Mutations**: Operations like file uploads, deletions, and updates use `useMutation`.
+- **Cache Invalidation**: On successful mutations, we invalidate related queries (e.g., `['documents']`) to trigger automatic background updates.
+- **Optimistic Updates**: Used for settings and toggles to provide immediate UI feedback before server confirmation.
+
+---
+
+## 3. Navigation & Routing
+
+### React Router
+
+- **Addressable URLs**: Every view in the modular system is addressable via the `/app?viewid={tab_id}` pattern.
+- **Deep Linking**: URL parameters like `viewid` and `id` (for previews) are synchronized with the `uiStore`, allowing users to bookmark or share specific states.
+- **Back/Forward Support**: Leverages the browser's history API for standard navigation behavior.
+
+### Store-Router Bridge
+
+The `App.tsx` component acts as a bridge:
+
+- It monitors URL changes via `useLocation`.
+- It synchronizes the state in `uiStore` to match the URL.
+- This ensures that navigating via standard `<Link>` components correctly updates the modular `ViewRenderer`.
+
+---
+
+## 4. Modernizing a Component (Example)
+
+When building or updating a view, follow these patterns:
 
 ```typescript
-export const manifest: FeatureManifest = {
-  name: "my_feature",
-  version: "1.0.0",
-  depends: ["base"],
-  navItems: [
-    /* ... */
-  ],
-};
-```
+// 1. Use Zustand for UI state
+const { activeTab, navigate } = useUIStore();
 
-3. Register views in the manifest
-4. Import manifest in `core/init.ts`
+// 2. Use React Query for data
+const { data: documents, isLoading } = useQuery({
+  queryKey: ["documents", filter],
+  queryFn: fetchDocuments,
+});
 
-### Extending Existing Features
-
-Module B can extend Module A's views without modifying A:
-
-```typescript
-viewRegistry.extendView({
-  inherit_id: "documents.document_list",
-  arch: [
-    {
-      action: "insert_after",
-      xpath: "//field[@name='name']",
-      content: { name: "new_field", label: "New Field", type: "text" },
-    },
-  ],
+// 3. Use Mutations for actions
+const moveMutation = useMutation({
+  mutationFn: moveFiles,
+  onSuccess: () => queryClient.invalidateQueries(["documents"]),
 });
 ```
 
-### View Definition Example
+---
 
-```typescript
-viewRegistry.registerView({
-  id: "documents.document_list",
-  model: "document",
-  type: "list",
-  arch: {
-    title: "Documents",
-    fields: [
-      { name: "name", label: "Name", type: "text" },
-      { name: "category", label: "Category", type: "text" },
-    ],
-  },
-  priority: 10,
-});
-```
+## 5. Benefits of this Architecture
 
-## Benefits
-
-1. **Hot-Plugging**: Add/remove features by adding/removing folders
-2. **No Core Modifications**: Extensions don't touch base modules
-3. **Decoupled Data/View**: Views are metadata, not hardcoded JSX
-4. **Inheritance**: Modules can extend other modules' views
-5. **Dependency Management**: Automatic loading order based on dependencies
-
-## Example: AI Processor Extension
-
-The `ai_processor` module extends the documents list view to add an AI Summary column:
-
-```typescript
-// features/ai_processor/manifest.ts
-export const manifest: FeatureManifest = {
-  name: "ai_processor",
-  version: "1.0.0",
-  depends: ["documents"],
-};
-
-viewRegistry.extendView({
-  inherit_id: "documents.document_list",
-  arch: [
-    {
-      action: "insert_after",
-      xpath: "//field[@name='name']",
-      content: { name: "ai_summary", label: "AI Summary", type: "text" },
-    },
-  ],
-});
-```
-
-This adds a new field without modifying the documents module.
+1.  **Strict Separation of Concerns**: Views (metadata), Data (React Query), and UI State (Zustand) are clearly decoupled.
+2.  **Extensibility**: New features can be added by creating a manifest and a view implementation without touching core files.
+3.  **Performance**: Efficient caching via React Query and atomic state updates via Zustand.
+4.  **UX**: Instant feedback through optimistic updates and shareable application states through addressable URLs.
 
 ## Future Enhancements
 
-1. **Auto-Discovery**: Use Vite's `import.meta.glob` to automatically discover manifests
-2. **Model Layer**: Implement ORM-like model definitions
-3. **Advanced XPath**: Support more complex view patching operations
-4. **View Composition**: Allow views to include other views
-5. **Action System**: Define actions (buttons, menus) in metadata
+1.  **Auto-Discovery**: Move from manual imports in `core/init.ts` to Vite's `import.meta.glob`.
+2.  **Advanced ORM**: Implement a consistent model layer for features to define data schemas.
+3.  **Real-time Sync**: Integrate WebSockets to trigger React Query invalidations from the server.

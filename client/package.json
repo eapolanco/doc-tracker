@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.90.20",
+    "@tanstack/react-query-devtools": "^5.91.3",
     "axios": "^1.13.4",
     "date-fns": "^4.1.0",
     "docx-preview": "^0.3.7",
@@ -17,6 +19,7 @@
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.0",
     "sonner": "^2.0.7",
     "xlsx": "^0.18.5",
     "zustand": "^5.0.11"
