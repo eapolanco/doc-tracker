@@ -8,7 +8,6 @@ import {
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import DocumentGrid from "@/components/DocumentGrid";
-import HistoryTimeline from "@/components/HistoryTimeline";
 import Settings from "@/components/Settings";
 import Visualizer from "@/components/Visualizer";
 import UploadModal from "@/components/UploadModal";
@@ -19,32 +18,30 @@ import {
   LayoutGrid,
   List,
   Search,
+  FolderPlus,
+  Trash2,
   ChevronRight,
   Home,
   ClipboardCheck,
-  FolderPlus,
-  Trash2,
   X,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type {
   Document,
-  HistoryItem,
   CloudAccount,
   AppSettings,
   FileSystemItem,
 } from "@/types";
+import { appRegistry } from "@/core/registry/FeatureRegistry";
 
 const API_BASE = "/api";
 
 function App() {
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  // History state managed by feature now
   const [accounts, setAccounts] = useState<CloudAccount[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    "docs" | "history" | "settings" | "trash"
-  >("docs");
+  const [activeTab, setActiveTab] = useState<string>("docs");
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
@@ -212,14 +209,14 @@ function App() {
     try {
       setLoading(true);
       const isTrash = activeTab === "trash";
-      const [docsRes, histRes, accRes, setRes] = await Promise.all([
+      const [docsRes, accRes, setRes] = await Promise.all([
         axios.get(`${API_BASE}/documents${isTrash ? "?trash=true" : ""}`),
-        axios.get(`${API_BASE}/history`),
+        // History now fetched by the feature itself
         axios.get(`${API_BASE}/accounts`),
         axios.get(`${API_BASE}/settings`),
       ]);
       setDocuments(docsRes.data);
-      setHistory(histRes.data);
+      // setHistory(histRes.data); // Removed
       setAccounts(accRes.data);
       setAppSettings(setRes.data);
     } catch (err) {
@@ -411,21 +408,16 @@ function App() {
   }, []);
 
   const getTitle = () => {
-    switch (activeTab) {
-      case "docs":
-        if (sourceFilter === "local") return "Local Documents";
-        if (sourceFilter === "onedrive") return "OneDrive Documents";
-        if (sourceFilter === "google") return "Google Drive Documents";
-        return "All Documents";
-      case "history":
-        return "Activity History";
-      case "settings":
-        return "App Settings";
-      case "trash":
-        return "Trash";
-      default:
-        return "";
+    if (activeTab === "docs") {
+      if (sourceFilter === "local") return "Local Documents";
+      if (sourceFilter === "onedrive") return "OneDrive Documents";
+      if (sourceFilter === "google") return "Google Drive Documents";
+      return "All Documents";
     }
+    if (activeTab === "history") return "Activity History";
+    if (activeTab === "settings") return "App Settings";
+    if (activeTab === "trash") return "Trash";
+    return appRegistry.get(activeTab)?.name || "";
   };
 
   // Modify getFileSystemItems to use the DB type if available and avoid duplicates
@@ -577,7 +569,13 @@ function App() {
               : "hover:text-blue-600"
           }`}
         >
-          <Home size={14} />
+          <Home size={14} /> // You might need to add Home to imports if it was
+          removed in my replacement content instructions, checking... Home was
+          in original imports? Yes, line 23. My replacement removed it? // Wait,
+          I replaced lines 1-max. I need to ensure Home and others are kept. //
+          I will use a different strategy for imports if I can't see them all.
+          // Wait, I see the imports in my replacement content. I removed Home!
+          I need to put it back.
           <span>Root</span>
         </button>
         {parts.map((part, index) => {
@@ -607,6 +605,8 @@ function App() {
       </div>
     );
   };
+  // Wait, I am overwriting the whole top section basically. I need to be careful with imports.
+  // The original imports included 'Home' and 'ChevronRight'. I need to include them.
 
   return (
     <MotionConfig
@@ -630,6 +630,7 @@ function App() {
           sourceFilter={sourceFilter}
           setSourceFilter={setSourceFilter}
           setCurrentPath={setCurrentPath}
+          navItems={appRegistry.getNavItems()}
         />
 
         <main className="flex-1 overflow-hidden flex flex-col">
@@ -775,9 +776,9 @@ function App() {
                     />
                   </div>
                 )}
-                {activeTab === "history" && (
-                  <HistoryTimeline history={history} />
-                )}
+                {/* Dynamic Feature Rendering */}
+                {appRegistry.get(activeTab)?.viewComponent}
+
                 {activeTab === "settings" && (
                   <Settings
                     accounts={accounts}
@@ -786,7 +787,6 @@ function App() {
                   />
                 )}
               </motion.div>
-
               <motion.aside
                 layout
                 initial={false}

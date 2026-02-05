@@ -1,20 +1,21 @@
 import {
   Layout,
   FileText,
-  Clock,
   Settings,
   HardDrive,
   Cloud,
   Trash2,
 } from "lucide-react";
 import { version } from "../../package.json";
+import type { FeatureNavItem } from "../core/registry/types";
 
 interface SidebarProps {
-  activeTab: "docs" | "history" | "settings" | "trash";
-  setActiveTab: (tab: "docs" | "history" | "settings" | "trash") => void;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
   sourceFilter: string | null;
   setSourceFilter: (source: string | null) => void;
   setCurrentPath: (path: string) => void;
+  navItems: FeatureNavItem[];
 }
 
 export default function Sidebar({
@@ -23,6 +24,7 @@ export default function Sidebar({
   sourceFilter,
   setSourceFilter,
   setCurrentPath,
+  navItems,
 }: SidebarProps) {
   const handleSourceClick = (source: string | null) => {
     setActiveTab("docs");
@@ -58,20 +60,37 @@ export default function Sidebar({
             <FileText size={18} />
             All Documents
           </button>
-          <button
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "history"
-                ? "bg-gray-900 text-white"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            }`}
-            onClick={() => {
-              setActiveTab("history");
-              setSourceFilter(null);
-            }}
-          >
-            <Clock size={18} />
-            History
-          </button>
+
+          {/* Dynamic Feature Items */}
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === (item.path?.replace("/", "") || item.id)
+                  ? "bg-gray-900 text-white"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+              onClick={() => {
+                if (item.onClick) {
+                  item.onClick();
+                } else if (item.path) {
+                  // Primitive routing: simple state switch
+                  // Extract ID from path or use ID.
+                  // convention: path "/history" -> tab "history"
+                  const tabName = item.path.startsWith("/")
+                    ? item.path.substring(1)
+                    : item.path;
+                  setActiveTab(tabName);
+                  setSourceFilter(null);
+                }
+              }}
+            >
+              {item.icon && (
+                <span className="w-[18px] h-[18px]">{item.icon}</span>
+              )}
+              {item.label}
+            </button>
+          ))}
         </div>
 
         <div className="mb-6">
