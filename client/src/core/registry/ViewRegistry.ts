@@ -2,6 +2,11 @@ export type ViewType = "list" | "form" | "kanban" | "main";
 
 export interface ViewArch {
   [key: string]: unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component?: React.ComponentType<any>;
+  props?: Record<string, unknown>;
+  title?: string;
+  headerActions?: React.ReactNode; // Feature-specific header actions
 }
 
 export interface ViewDefinition {

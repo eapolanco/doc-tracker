@@ -5,6 +5,7 @@ import { RefreshCcw } from "lucide-react";
 import DocumentGrid from "@/components/DocumentGrid";
 import type { Document } from "@/types";
 import Page from "@/components/Page";
+import { createConditionalActions } from "@/hooks/useFeatureActions";
 
 const API_BASE = "/api";
 
@@ -111,41 +112,52 @@ export default function TrashMain() {
     }
   };
 
+  // Define feature-specific header actions using the decoupled pattern
+  const headerActions =
+    documents.length > 0 &&
+    createConditionalActions([
+      {
+        condition: selectedIds.size > 0,
+        action: (
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-blue-700"
+            onClick={handleRestoreSelected}
+            disabled={loading}
+          >
+            <RefreshCcw size={16} />
+            Restore Selected ({selectedIds.size})
+          </button>
+        ),
+      },
+      {
+        condition: true,
+        action: (
+          <button
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-emerald-700"
+            onClick={handleRestoreAll}
+            disabled={loading}
+          >
+            <RefreshCcw size={16} />
+            Restore All
+          </button>
+        ),
+      },
+      {
+        condition: true,
+        action: (
+          <button
+            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
+            onClick={handleEmptyTrash}
+            disabled={loading}
+          >
+            Empty Trash
+          </button>
+        ),
+      },
+    ]);
+
   return (
-    <Page
-      title="Trash Bin"
-      actions={
-        documents.length > 0 && (
-          <div className="flex items-center gap-3">
-            {selectedIds.size > 0 && (
-              <button
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-blue-700"
-                onClick={handleRestoreSelected}
-                disabled={loading}
-              >
-                <RefreshCcw size={16} />
-                Restore Selected ({selectedIds.size})
-              </button>
-            )}
-            <button
-              className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-emerald-700"
-              onClick={handleRestoreAll}
-              disabled={loading}
-            >
-              <RefreshCcw size={16} />
-              Restore All
-            </button>
-            <button
-              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
-              onClick={handleEmptyTrash}
-              disabled={loading}
-            >
-              Empty Trash
-            </button>
-          </div>
-        )
-      }
-    >
+    <Page title="Trash Bin" actions={headerActions}>
       <div className="flex-1 overflow-y-auto px-8 pb-8">
         <DocumentGrid
           documents={documents}
