@@ -170,6 +170,20 @@ function App() {
     console.log("Selected Document:", selectedDoc?.name);
   }, [activeTab, selectedDoc]);
 
+  // Apply Theme
+  useEffect(() => {
+    if (appSettings?.app?.theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [appSettings?.app?.theme]);
+
+  // Update Document Title
+  useEffect(() => {
+    document.title = appSettings?.app?.name || "DocTracker";
+  }, [appSettings?.app?.name]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -257,6 +271,20 @@ function App() {
       toast.error("Failed to create folder");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async (newSettings: AppSettings) => {
+    try {
+      // Optimistically update state
+      setAppSettings(newSettings);
+      await axios.post(`${API_BASE}/settings`, newSettings);
+      toast.success("Settings saved");
+    } catch (err) {
+      console.error("Failed to save settings:", err);
+      toast.error("Failed to save settings");
+      // Revert on error - fetching data again
+      fetchData();
     }
   };
 
@@ -663,7 +691,11 @@ function App() {
             )}
             {activeTab === "history" && <HistoryTimeline history={history} />}
             {activeTab === "settings" && (
-              <Settings accounts={accounts} appSettings={appSettings} />
+              <Settings
+                accounts={accounts}
+                appSettings={appSettings}
+                onSaveSettings={handleSaveSettings}
+              />
             )}
           </div>
 

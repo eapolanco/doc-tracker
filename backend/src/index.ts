@@ -60,6 +60,36 @@ app.use(express.static(frontendPath));
 // Settings Routes
 const SETTINGS_PATH = path.join(__dirname, "../../data/settings.json");
 
+let scanInterval: ReturnType<typeof setInterval> | null = null;
+
+async function updateScanSchedule() {
+  if (scanInterval) {
+    clearInterval(scanInterval);
+    scanInterval = null;
+  }
+
+  try {
+    const data = await fs.readFile(SETTINGS_PATH, "utf-8");
+    const settings = JSON.parse(data);
+
+    if (settings.app?.autoScan) {
+      const hours = settings.app.scanIntervalHours || 1;
+      const ms = hours * 60 * 60 * 1000;
+      console.log(`Setting up auto-scan every ${hours} hours (${ms}ms)`);
+
+      scanInterval = setInterval(() => {
+        console.log("Running scheduled scan...");
+        const rootDir = path.join(__dirname, "../../documents");
+        scanDirectory(rootDir);
+      }, ms);
+    } else {
+      console.log("Auto-scan disabled");
+    }
+  } catch (err) {
+    console.error("Failed to configure auto-scan:", err);
+  }
+}
+
 app.get("/api/settings", async (req, res) => {
   try {
     const data = await fs.readFile(SETTINGS_PATH, "utf-8");
@@ -72,6 +102,7 @@ app.get("/api/settings", async (req, res) => {
 app.post("/api/settings", async (req, res) => {
   try {
     await fs.writeFile(SETTINGS_PATH, JSON.stringify(req.body, null, 2));
+    await updateScanSchedule();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: "Failed to save settings" });
@@ -804,6 +835,7 @@ const TLS_ENABLED = process.env.TLS_ENABLED === "true";
 
 async function startServer() {
   await ensureDirectories();
+  await updateScanSchedule();
 
   if (TLS_ENABLED) {
     const keyPath =
