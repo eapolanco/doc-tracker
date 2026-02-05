@@ -1,6 +1,6 @@
 import type { FeatureManifest } from "@/core/manifest/types";
 import { viewRegistry } from "@/core/registry/ViewRegistry";
-import HistoryMain from "./components/HistoryMain";
+import HistoryMainView from "./views/HistoryMainView";
 
 export const manifest: FeatureManifest = {
   name: "history",
@@ -27,7 +27,7 @@ viewRegistry.registerView({
   model: "history",
   type: "main",
   arch: {
-    component: HistoryMain,
+    component: HistoryMainView,
     props: {},
   },
   priority: 10,

@@ -1,72 +1,65 @@
-import { useState, useCallback, useEffect } from "react";
-import axios from "axios";
+import { useState } from "react";
 import { toast } from "sonner";
 import { RefreshCcw } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DocumentGrid from "@/components/DocumentGrid";
-import type { Document } from "@/types";
 import Page from "@/components/Page";
 import { createConditionalActions } from "@/hooks/useFeatureActions";
 import LayoutSwitcher from "@/components/LayoutSwitcher";
-import { useViewOptions } from "@/hooks/useViewOptions";
-
+import { useViewOptions } from "@/hooks/useViewOptions"; // Verify import path
 import Button from "@/components/Button";
+import { trashController } from "../controllers/TrashController";
 
-const API_BASE = "/api";
-
-export default function TrashMain() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
+export default function TrashMainView() {
+  const queryClient = useQueryClient();
   const { viewType, setViewType, sortField, sortOrder, handleSort } =
     useViewOptions("grid");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Data fetching
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ["trash"],
+    queryFn: () => trashController.fetch(),
+  });
+
+  // Restore mutation
+  const restoreMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await Promise.all(ids.map((id) => trashController.restore(id)));
+    },
+    onSuccess: (_, ids) => {
+      queryClient.invalidateQueries({ queryKey: ["trash"] });
+      // Also invalidate documents main list if we had that key, usually "documents"
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success(`Restored ${ids.length} documents`);
+      setSelectedIds(new Set());
+    },
+    onError: () => {
+      toast.error("Failed to restore items");
+    },
+  });
+
+  // Empty trash mutation
+  const emptyTrashMutation = useMutation({
+    mutationFn: () => trashController.empty(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["trash"] });
+      toast.success("Trash emptied");
+    },
+    onError: () => {
+      toast.error("Failed to empty trash");
+    },
+  });
 
   const [clipboard, setClipboard] = useState<{
     ids: string[];
     type: "copy" | "move";
   } | null>(null);
 
-  // Fetch trash items
-  const fetchTrash = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${API_BASE}/documents?trash=true`);
-      setDocuments(res.data);
-    } catch (err) {
-      console.error("Error fetching trash:", err);
-      toast.error("Failed to load trash items");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTrash();
-  }, [fetchTrash]);
-
-  // Clear selection when documents change
-  useEffect(() => {
-    setSelectedIds(new Set());
-  }, [documents.length]);
-
   // Trash actions
   const handleRestoreSelected = async () => {
     if (selectedIds.size === 0) return;
-    try {
-      setLoading(true);
-      await Promise.all(
-        Array.from(selectedIds).map((id) =>
-          axios.post(`${API_BASE}/documents/${id}/restore`),
-        ),
-      );
-      toast.success(`Restored ${selectedIds.size} documents`);
-      setSelectedIds(new Set());
-      fetchTrash();
-    } catch (err) {
-      console.error("Error restoring selected:", err);
-      toast.error("Failed to restore selected items");
-    } finally {
-      setLoading(false);
-    }
+    restoreMutation.mutate(Array.from(selectedIds));
   };
 
   const handleRestoreAll = async () => {
@@ -76,21 +69,7 @@ export default function TrashMain() {
       )
     )
       return;
-    try {
-      setLoading(true);
-      await Promise.all(
-        documents.map((doc) =>
-          axios.post(`${API_BASE}/documents/${doc.id}/restore`),
-        ),
-      );
-      toast.success(`Restored ${documents.length} documents`);
-      fetchTrash();
-    } catch (err) {
-      console.error("Error restoring all:", err);
-      toast.error("Failed to restore all items");
-    } finally {
-      setLoading(false);
-    }
+    restoreMutation.mutate(documents.map((d) => d.id));
   };
 
   const handleEmptyTrash = async () => {
@@ -100,18 +79,11 @@ export default function TrashMain() {
       )
     )
       return;
-    try {
-      setLoading(true);
-      await axios.post(`${API_BASE}/documents/trash/empty`);
-      toast.success("Trash emptied");
-      fetchTrash();
-    } catch (err) {
-      console.error("Error emptying trash:", err);
-      toast.error("Failed to empty trash");
-    } finally {
-      setLoading(false);
-    }
+    emptyTrashMutation.mutate();
   };
+
+  const isLoadingAction =
+    restoreMutation.isPending || emptyTrashMutation.isPending || isLoading;
 
   // Define feature-specific header actions using the decoupled pattern
   const headerActions =
@@ -124,7 +96,7 @@ export default function TrashMain() {
             variant="primary"
             icon={RefreshCcw}
             onClick={handleRestoreSelected}
-            loading={loading}
+            loading={isLoadingAction}
           >
             Restore Selected ({selectedIds.size})
           </Button>
@@ -137,7 +109,7 @@ export default function TrashMain() {
             variant="success"
             icon={RefreshCcw}
             onClick={handleRestoreAll}
-            loading={loading}
+            loading={isLoadingAction}
           >
             Restore All
           </Button>
@@ -146,7 +118,11 @@ export default function TrashMain() {
       {
         condition: true,
         action: (
-          <Button variant="danger" onClick={handleEmptyTrash} loading={loading}>
+          <Button
+            variant="danger"
+            onClick={handleEmptyTrash}
+            loading={isLoadingAction}
+          >
             Empty Trash
           </Button>
         ),
@@ -169,7 +145,9 @@ export default function TrashMain() {
         <DocumentGrid
           documents={documents}
           onPreview={() => {}} // No preview in trash usually, or read-only
-          onRefresh={fetchTrash}
+          onRefresh={() =>
+            queryClient.invalidateQueries({ queryKey: ["trash"] })
+          }
           viewType={viewType}
           isSearching={false}
           onMove={async () => {}}

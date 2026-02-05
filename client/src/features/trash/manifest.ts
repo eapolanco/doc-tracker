@@ -1,6 +1,6 @@
 import type { FeatureManifest } from "@/core/manifest/types";
 import { viewRegistry } from "@/core/registry/ViewRegistry";
-import TrashMain from "./components/TrashMain";
+import TrashMainView from "./views/TrashMainView";
 
 export const manifest: FeatureManifest = {
   name: "trash",
@@ -27,7 +27,7 @@ viewRegistry.registerView({
   model: "trash",
   type: "main",
   arch: {
-    component: TrashMain,
+    component: TrashMainView,
     props: {},
   },
   priority: 10,

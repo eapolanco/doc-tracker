@@ -2,14 +2,12 @@ import { useRef, useState } from "react";
 import { Cloud, Shield, Check, Edit2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { CloudAccount, AppSettings } from "@/types";
-import axios from "axios";
 import { toast } from "sonner";
 import Page from "@/components/Page";
 import { useSettingsStore } from "@/store/settingsStore";
+import { settingsController } from "../controllers/SettingsController";
 
-const API_BASE = "/api";
-
-export default function SettingsMain() {
+export default function SettingsMainView() {
   const queryClient = useQueryClient();
   const { updateSettings: updateStore } = useSettingsStore();
 
@@ -17,9 +15,9 @@ export default function SettingsMain() {
   const { data: appSettings } = useQuery<AppSettings>({
     queryKey: ["settings"],
     queryFn: async () => {
-      const res = await axios.get(`${API_BASE}/settings`);
-      updateStore(res.data); // Keep Zustand in sync
-      return res.data;
+      const data = await settingsController.fetchSettings();
+      updateStore(data); // Keep Zustand in sync
+      return data;
     },
   });
 
@@ -27,13 +25,13 @@ export default function SettingsMain() {
     CloudAccount[]
   >({
     queryKey: ["accounts"],
-    queryFn: async () => (await axios.get(`${API_BASE}/accounts`)).data,
+    queryFn: () => settingsController.fetchAccounts(),
   });
 
   // Mutations
   const updateSettingsMutation = useMutation({
     mutationFn: (newSettings: AppSettings) =>
-      axios.post(`${API_BASE}/settings`, newSettings),
+      settingsController.updateSettings(newSettings),
     onMutate: async (newSettings) => {
       // Optimistic Update
       await queryClient.cancelQueries({ queryKey: ["settings"] });
