@@ -18,6 +18,7 @@ import {
   handleGoogleCallback,
   handleOneDriveCallback,
 } from "./services/cloud.js";
+import { encryptBuffer, getDecipherStream } from "./services/crypto.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,22 +36,8 @@ app.use(cors());
 app.use(express.json());
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const category = req.body.category || "Personal";
-    const uploadDir = path.join(__dirname, "../../documents", category);
-    try {
-      await fs.mkdir(uploadDir, { recursive: true });
-      cb(null, uploadDir);
-    } catch (error) {
-      cb(error as Error, uploadDir);
-    }
-  },
-  filename: (req, file, cb) => {
-    // Preserve original filename
-    cb(null, file.originalname);
-  },
-});
+// Use memory storage to process file (encrypt) before writing to disk
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -227,7 +214,25 @@ app.get("/api/documents/:id/view", async (req, res) => {
     }
 
     const fullPath = getAbsolutePath(doc.path);
-    res.sendFile(fullPath);
+
+    if (doc.encrypted) {
+      try {
+        const decipherStream = await getDecipherStream(fullPath);
+        // Set headers manually since we are streaming
+        res.setHeader("Content-Type", "application/octet-stream"); // Or try to guess mime type
+        res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
+        decipherStream.pipe(res);
+        decipherStream.on("error", (err) => {
+          console.error("Decryption stream error:", err);
+          res.end();
+        });
+      } catch (err) {
+        console.error("Decryption error:", err);
+        res.status(500).json({ error: "Failed to decrypt document" });
+      }
+    } else {
+      res.sendFile(fullPath);
+    }
   } catch (err) {
     res.status(500).json({ error: "Failed to load document" });
   }
@@ -600,11 +605,44 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
 
     const category = req.body.category || "Personal";
     const fileName = req.file.originalname;
+
+    // Determine destination
+    const uploadDir = path.join(DOCUMENTS_ROOT, category);
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    const encryptedBuffer = encryptBuffer(req.file.buffer);
+
+    // Write encrypted file
+    // We keep the original extension to avoid confusing the file system walker,
+    // but the content is encrypted.
+    const fullPath = path.join(uploadDir, fileName);
+    await fs.writeFile(fullPath, encryptedBuffer);
+
     const relativePath = path
-      .relative(DOCUMENTS_ROOT, req.file.path)
+      .relative(DOCUMENTS_ROOT, fullPath)
       .replace(/\\/g, "/");
 
-    console.log(`Uploaded: ${fileName} to ${category}`);
+    console.log(`Uploaded (Encrypted): ${fileName} to ${category}`);
+
+    // Insert into DB with encrypted=true
+    const id = uuidv4();
+    await db.insert(documents).values({
+      id,
+      name: fileName,
+      category,
+      path: relativePath,
+      cloudSource: "upload",
+      status: "valid",
+      encrypted: true,
+      lastModified: new Date(),
+    });
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "create",
+      timestamp: new Date(),
+      details: "Uploaded encrypted document",
+    });
 
     res.json({
       success: true,
@@ -612,7 +650,7 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
         name: fileName,
         category,
         path: relativePath,
-        size: req.file.size,
+        size: encryptedBuffer.length,
       },
     });
   } catch (error) {
