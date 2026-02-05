@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion, LayoutGroup } from "framer-motion";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import DocumentGrid from "@/components/DocumentGrid";
@@ -726,62 +727,73 @@ function App() {
           </div>
         </header>
 
-        <div className="flex flex-1 overflow-hidden relative">
-          <div className="flex-1 min-w-0 overflow-y-auto px-8 pb-8 transition-all duration-200">
-            {(activeTab === "docs" || activeTab === "trash") && (
-              <div className="flex flex-col h-full">
-                <Breadcrumbs />
-                <DocumentGrid
-                  documents={sortedItems}
-                  onPreview={(item: FileSystemItem) => {
-                    if (item.type === "folder") {
-                      setCurrentPath(item.path);
-                    } else {
-                      setSelectedDoc(item as Document);
-                    }
-                  }}
-                  onRefresh={fetchData}
-                  viewType={viewType}
-                  isSearching={searchQuery.length > 0}
-                  onMove={handleMove}
-                  onSetClipboard={setClipboard}
-                  clipboardStatus={clipboard}
-                  sortField={sortField}
-                  sortOrder={sortOrder}
-                  onSort={(field) => {
-                    if (sortField === field) {
-                      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                    } else {
-                      setSortField(field);
-                      setSortOrder("asc");
-                    }
-                  }}
-                  isTrash={activeTab === "trash"}
+        <LayoutGroup>
+          <div className="flex flex-1 overflow-hidden relative">
+            <motion.div
+              layout
+              className="flex-1 min-w-0 overflow-y-auto px-8 pb-8"
+            >
+              {(activeTab === "docs" || activeTab === "trash") && (
+                <div className="flex flex-col h-full">
+                  <Breadcrumbs />
+                  <DocumentGrid
+                    documents={sortedItems}
+                    onPreview={(item: FileSystemItem) => {
+                      if (item.type === "folder") {
+                        setCurrentPath(item.path);
+                      } else {
+                        setSelectedDoc(item as Document);
+                      }
+                    }}
+                    onRefresh={fetchData}
+                    viewType={viewType}
+                    isSearching={searchQuery.length > 0}
+                    onMove={handleMove}
+                    onSetClipboard={setClipboard}
+                    clipboardStatus={clipboard}
+                    sortField={sortField}
+                    sortOrder={sortOrder}
+                    onSort={(field) => {
+                      if (sortField === field) {
+                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                      } else {
+                        setSortField(field);
+                        setSortOrder("asc");
+                      }
+                    }}
+                    isTrash={activeTab === "trash"}
+                  />
+                </div>
+              )}
+              {activeTab === "history" && <HistoryTimeline history={history} />}
+              {activeTab === "settings" && (
+                <Settings
+                  accounts={accounts}
+                  appSettings={appSettings}
+                  onSaveSettings={handleSaveSettings}
                 />
-              </div>
-            )}
-            {activeTab === "history" && <HistoryTimeline history={history} />}
-            {activeTab === "settings" && (
-              <Settings
-                accounts={accounts}
-                appSettings={appSettings}
-                onSaveSettings={handleSaveSettings}
-              />
-            )}
-          </div>
+              )}
+            </motion.div>
 
-          <aside
-            className={`w-[450px] shrink-0 border-l border-gray-200 bg-white flex flex-col transition-all duration-300 ease-out z-10 
-              ${selectedDoc ? "mr-0 visible" : "-mr-[450px] invisible"}`}
-          >
-            {selectedDoc && (
-              <Visualizer
-                document={selectedDoc}
-                onClose={() => setSelectedDoc(null)}
-              />
-            )}
-          </aside>
-        </div>
+            <motion.aside
+              layout
+              initial={false}
+              animate={{
+                width: selectedDoc ? 450 : 0,
+                opacity: selectedDoc ? 1 : 0,
+              }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="shrink-0 border-l border-gray-200 bg-white flex flex-col z-10 overflow-hidden"
+            >
+              {selectedDoc && (
+                <Visualizer
+                  document={selectedDoc}
+                  onClose={() => setSelectedDoc(null)}
+                />
+              )}
+            </motion.aside>
+          </div>
+        </LayoutGroup>
 
         {showUploadModal && (
           <UploadModal
@@ -800,7 +812,7 @@ function App() {
         )}
 
         {/* Global Upload Progress Bar */}
-        {uploadProgress && (
+        {uploadProgress !== null && (
           <div className="fixed bottom-6 right-6 w-96 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl z-2000 p-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
             <div className="flex justify-between items-start mb-3">
               <div>

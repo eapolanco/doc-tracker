@@ -818,7 +818,10 @@ export default function DocumentGrid({
   return (
     <motion.div
       layout
-      className="grid gap-6 py-4 grid-cols-[repeat(auto-fill,minmax(min(280px,100%),1fr))] items-stretch relative"
+      transition={{
+        layout: { type: "spring", stiffness: 300, damping: 30, mass: 1 },
+      }}
+      className="flex flex-wrap gap-6 py-4 relative items-stretch"
     >
       <AnimatePresence mode="popLayout">
         {documents.map((doc) => {
@@ -835,10 +838,20 @@ export default function DocumentGrid({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{
-                layout: { type: "spring", stiffness: 300, damping: 30 },
+                layout: {
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                  mass: 1,
+                },
                 opacity: { duration: 0.2 },
               }}
               key={doc.id}
+              style={{
+                flex: "1 1 280px",
+                maxWidth: "min(450px, 100%)",
+                zIndex: activeMenu === doc.id ? 999 : 1,
+              }}
               draggable={doc.type !== "folder"}
               /* eslint-disable @typescript-eslint/no-explicit-any */
               onDragStart={(e: any) => handleDragStart(e, doc.id)}
@@ -858,7 +871,6 @@ export default function DocumentGrid({
                       ? "bg-amber-50 border-amber-500 shadow-xl scale-[1.02] z-20"
                       : "bg-white/80 backdrop-blur-sm border-gray-100/50 shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] hover:-translate-y-1.5 hover:border-blue-200/50 hover:bg-white"
                 } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${isPulsing ? "animate-pulse-blue border-blue-400 ring-4 ring-blue-500/10" : ""}`}
-              style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
               onClick={() => {
                 if (renamingId !== doc.id) {
                   if ((doc as Document).status === "corrupted") {
@@ -1008,7 +1020,7 @@ export default function DocumentGrid({
           );
         })}
       </AnimatePresence>
-      {bulkActionsBar}
+      <AnimatePresence>{bulkActionsBar}</AnimatePresence>
       <ConfirmModal
         isOpen={confirmConfig.isOpen}
         title={confirmConfig.title}
