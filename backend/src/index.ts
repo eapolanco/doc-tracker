@@ -124,6 +124,31 @@ async function scanDirectory(dir: string, category: string = "General") {
       if (entry.isDirectory()) {
         // Skip common large folders
         if (entry.name === "node_modules" || entry.name === ".git") continue;
+        // Create/Update folder in DB
+        const relativeFolderPath = path
+          .relative(DOCUMENTS_ROOT, fullPath)
+          .replace(/\\/g, "/");
+
+        const folderStats = await fs.stat(fullPath);
+
+        const existingFolder = await db.query.documents.findFirst({
+          where: eq(documents.path, relativeFolderPath),
+        });
+
+        if (!existingFolder) {
+          const fid = `folder-${uuidv4()}`; // Use prefix to distinguish or just uuid
+          await db.insert(documents).values({
+            id: fid,
+            name: entry.name,
+            category: category,
+            path: relativeFolderPath,
+            cloudSource: "local",
+            type: "folder",
+            status: "valid",
+            lastModified: folderStats.mtime,
+          });
+        }
+
         await scanDirectory(fullPath, entry.name);
       } else {
         const stats = await fs.stat(fullPath);
@@ -146,6 +171,7 @@ async function scanDirectory(dir: string, category: string = "General") {
             category,
             path: relativePath,
             cloudSource: "local",
+            type: "file",
             status: status,
             lastModified: stats.mtime,
           });
@@ -656,6 +682,57 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
   } catch (error) {
     console.error("Upload error:", error);
     res.status(500).json({ error: "Failed to upload file" });
+  }
+});
+
+app.post("/api/folders", async (req, res) => {
+  try {
+    const { name, parentPath } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: "Folder name is required" });
+    }
+
+    // Sanitize name to prevent directory traversal
+    const safeName = path.basename(name);
+
+    // Resolve parent path
+    const safeParentPath = parentPath ? parentPath.replace(/^\//, "") : "";
+    const targetDir = path.join(DOCUMENTS_ROOT, safeParentPath, safeName);
+
+    // Create directory
+    await fs.mkdir(targetDir, { recursive: true });
+
+    // Insert into DB
+    const relativePath = path
+      .relative(DOCUMENTS_ROOT, targetDir)
+      .replace(/\\/g, "/");
+
+    const category = safeParentPath.split("/")[0] || safeName;
+
+    const id = `folder-${uuidv4()}`;
+    await db.insert(documents).values({
+      id,
+      name: safeName,
+      category,
+      path: relativePath,
+      cloudSource: "local",
+      type: "folder",
+      status: "valid",
+      lastModified: new Date(),
+    });
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "create",
+      timestamp: new Date(),
+      details: `Created folder "${safeName}"`,
+    });
+
+    res.json({ success: true, path: relativePath, id });
+  } catch (err) {
+    console.error("Create folder error:", err);
+    res.status(500).json({ error: "Failed to create folder" });
   }
 });
 

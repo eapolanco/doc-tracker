@@ -6,6 +6,7 @@ import HistoryTimeline from "@/components/HistoryTimeline";
 import Settings from "@/components/Settings";
 import Visualizer from "@/components/Visualizer";
 import UploadModal from "@/components/UploadModal";
+import CreateFolderModal from "@/components/CreateFolderModal";
 import {
   RefreshCw,
   Upload,
@@ -15,6 +16,7 @@ import {
   ChevronRight,
   Home,
   ClipboardCheck,
+  FolderPlus,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type {
@@ -23,7 +25,6 @@ import type {
   CloudAccount,
   AppSettings,
   FileSystemItem,
-  FolderItem,
 } from "@/types";
 
 const API_BASE = "/api";
@@ -40,6 +41,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [viewType, setViewType] = useState<"grid" | "list">("grid");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPath, setCurrentPath] = useState("");
@@ -236,6 +238,32 @@ function App() {
     }
   };
 
+  const submitCreateFolder = async (folderName: string) => {
+    if (!folderName) return;
+
+    // Close modal first
+    setShowCreateFolderModal(false);
+
+    try {
+      setLoading(true);
+      await axios.post(`${API_BASE}/folders`, {
+        name: folderName,
+        parentPath: currentPath,
+      });
+      await fetchData();
+      toast.success("Folder created successfully");
+    } catch (err) {
+      console.error("Create folder error:", err);
+      toast.error("Failed to create folder");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateFolder = () => {
+    setShowCreateFolderModal(true);
+  };
+
   const handleGlobalDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
@@ -316,87 +344,96 @@ function App() {
     }
   };
 
+  // Modify getFileSystemItems to use the DB type if available and avoid duplicates
+  // This replaces the previous implementation
   const getFileSystemItems = () => {
-    // 1. Initial filter based on source only (search is applied differently)
     const filteredBySource = documents.filter((doc) => {
       return sourceFilter ? doc.cloudSource === sourceFilter : true;
     });
 
-    let itemsToProcess: FileSystemItem[] = [];
-
     if (searchQuery) {
-      // GLOBAL SEARCH: Ignore currentPath, return all matching files
+      // Global search returns everything matching
       const searchLower = searchQuery.toLowerCase();
-      itemsToProcess = filteredBySource
-        .filter((doc) => {
-          return (
-            doc.name.toLowerCase().includes(searchLower) ||
-            doc.category.toLowerCase().includes(searchLower) ||
-            doc.path.toLowerCase().includes(searchLower)
-          );
-        })
-        .map((doc) => ({ ...doc, type: "file" as const }));
-    } else {
-      // FOLDER NAVIGATION: Group by currentPath
-      const directSubfolders = new Map<string, FolderItem>();
-      const files: FileSystemItem[] = [];
-
-      filteredBySource.forEach((doc) => {
-        const relPath =
-          currentPath === ""
-            ? doc.path
-            : doc.path.startsWith(currentPath + "/")
-              ? doc.path.substring(currentPath.length + 1)
-              : null;
-
-        if (relPath === null) return;
-
-        const parts = relPath.split("/");
-        if (parts.length > 1) {
-          const folderName = parts[0];
-          if (!directSubfolders.has(folderName)) {
-            directSubfolders.set(folderName, {
-              id: `folder-${folderName}`,
-              name: folderName,
-              path:
-                currentPath === ""
-                  ? folderName
-                  : `${currentPath}/${folderName}`,
-              type: "folder",
-              cloudSource: doc.cloudSource,
-              category: "Folder",
-              lastModified: doc.lastModified,
-            });
-          }
-        } else {
-          files.push({ ...doc, type: "file" as const });
-        }
-      });
-      itemsToProcess = [...Array.from(directSubfolders.values()), ...files];
+      return filteredBySource.filter(
+        (doc) =>
+          doc.name.toLowerCase().includes(searchLower) ||
+          doc.category.toLowerCase().includes(searchLower) ||
+          doc.path.toLowerCase().includes(searchLower),
+      );
     }
 
-    // 2. Consistent Sorting for all views
-    return itemsToProcess.sort((a, b) => {
-      // Always keep folders at the top
+    // Combine DB folders and inferred folders (for backward compatibility or untracked files)
+    // Ideally we trust 'type' from DB now.
+
+    // Filter items to show only direct children of currentPath
+    const visibleItems = filteredBySource.filter((doc) => {
+      const docPath = doc.path;
+      if (currentPath === "") {
+        // Show items at root (no slashes)
+        return !docPath.includes("/");
+      }
+      // Show items directly in currentPath
+      // e.g. current="Finance", doc="Finance/doc.pdf" -> OK
+      // doc="Finance/Taxes/doc.pdf" -> NO (it's in subfolder)
+      if (!docPath.startsWith(currentPath + "/")) return false;
+
+      const relativePart = docPath.substring(currentPath.length + 1);
+      return !relativePart.includes("/");
+    });
+
+    // Also need to find implicit folders if they haven't been scanned as objects yet?
+    // With the new scan logic, folders should exist as objects.
+    // Let's rely on that for now, but if we need implicit folders we can add logic back.
+    // Actually, let's keep the implicit logic for robustness in case DB isn't fully synced or manual files dropped.
+
+    // MAP of items to return
+    const itemsMap = new Map<string, FileSystemItem>();
+
+    // Add explicit items first
+    visibleItems.forEach((item) => {
+      itemsMap.set(item.name, item);
+    });
+
+    // Add implicit folders (look at all files deeper than current path)
+    filteredBySource.forEach((doc) => {
+      if (currentPath === "" && doc.path.includes("/")) {
+        const folderName = doc.path.split("/")[0];
+        if (!itemsMap.has(folderName)) {
+          itemsMap.set(folderName, {
+            id: `folder-implicit-${folderName}`,
+            name: folderName,
+            path: folderName,
+            type: "folder",
+            category: "Folder",
+            cloudSource: doc.cloudSource,
+            lastModified: doc.lastModified,
+            status: "valid",
+          });
+        }
+      } else if (doc.path.startsWith(currentPath + "/")) {
+        const relative = doc.path.substring(currentPath.length + 1);
+        if (relative.includes("/")) {
+          const folderName = relative.split("/")[0];
+          if (!itemsMap.has(folderName)) {
+            itemsMap.set(folderName, {
+              id: `folder-implicit-${folderName}`,
+              name: folderName,
+              path: `${currentPath}/${folderName}`,
+              type: "folder",
+              category: "Folder",
+              cloudSource: doc.cloudSource,
+              lastModified: doc.lastModified,
+              status: "valid",
+            });
+          }
+        }
+      }
+    });
+
+    return Array.from(itemsMap.values()).sort((a, b) => {
       if (a.type === "folder" && b.type !== "folder") return -1;
       if (a.type !== "folder" && b.type === "folder") return 1;
-
-      const factor = sortOrder === "asc" ? 1 : -1;
-
-      if (sortField === "name") {
-        return a.name.localeCompare(b.name) * factor;
-      }
-      if (sortField === "category") {
-        return (a.category || "").localeCompare(b.category || "") * factor;
-      }
-      if (sortField === "date") {
-        return (
-          (new Date(a.lastModified).getTime() -
-            new Date(b.lastModified).getTime()) *
-          factor
-        );
-      }
-      return 0;
+      return a.name.localeCompare(b.name);
     });
   };
 
@@ -543,6 +580,13 @@ function App() {
                     Upload Files
                   </button>
                   <button
+                    className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-gray-50"
+                    onClick={handleCreateFolder}
+                  >
+                    <FolderPlus size={16} className="mr-2" />
+                    New Folder
+                  </button>
+                  <button
                     className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90 disabled:opacity-50"
                     onClick={handleScan}
                     disabled={loading}
@@ -641,6 +685,14 @@ function App() {
             onClose={() => setShowUploadModal(false)}
             onUploadComplete={fetchData}
             onProgressUpdate={setUploadProgress}
+          />
+        )}
+
+        {showCreateFolderModal && (
+          <CreateFolderModal
+            isOpen={showCreateFolderModal}
+            onClose={() => setShowCreateFolderModal(false)}
+            onCreate={submitCreateFolder}
           />
         )}
 

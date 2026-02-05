@@ -6,7 +6,7 @@ export interface Document {
   cloudSource: string;
   status: "valid" | "corrupted" | "missing"; // Status of the file
   lastModified: string;
-  type?: "file" | "folder";
+  type: "file" | "folder"; // Now mandatory as it comes from DB, defaulting to file if missing in old records
 }
 
 export interface FolderItem {
@@ -17,6 +17,7 @@ export interface FolderItem {
   cloudSource: string;
   category: string;
   lastModified: string;
+  status: "valid" | "corrupted" | "missing";
 }
 
 export type FileSystemItem = Document | FolderItem;
