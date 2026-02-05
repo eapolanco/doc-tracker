@@ -1,8 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { FileText, Download, X, ExternalLink } from "lucide-react";
+import {
+  FileText,
+  Download,
+  X,
+  ExternalLink,
+  Tag as TagIcon,
+  Calendar,
+  Hash,
+  Info,
+  Clock,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 import * as docx from "docx-preview";
 import * as XLSX from "xlsx";
 import type { Document } from "@/types";
+import { format } from "date-fns";
+import axios from "axios";
+import { toast } from "sonner";
 
 interface Props {
   document: Document;
@@ -15,16 +30,34 @@ type SheetCell = string | number | boolean | null;
 type SheetRow = SheetCell[];
 type SheetData = SheetRow[];
 
+const formatFileSize = (bytes?: number) => {
+  if (bytes === undefined || bytes === null) return "N/A";
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
 export default function Visualizer({ document, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [content, setContent] = useState<string | SheetData | null>(null);
   const [type, setType] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState("");
+  const [showMetadata, setShowMetadata] = useState(false);
   const docxRef = useRef<HTMLDivElement>(null);
 
   const fileUrl = `${API_BASE}/documents/${document.id}/view`;
 
   useEffect(() => {
+    try {
+      setTags(JSON.parse(document.tags || "[]"));
+    } catch {
+      setTags([]);
+    }
+
     const ext = document.name.split(".").pop()?.toLowerCase();
     setType(ext || "");
 
@@ -34,7 +67,7 @@ export default function Visualizer({ document, onClose }: Props) {
         setError(null);
         setContent(null);
 
-        if (ext === "txt") {
+        if (ext === "txt" || ext === "md" || ext === "json") {
           const res = await fetch(fileUrl);
           if (!res.ok) throw new Error("Failed to load file");
           const text = await res.text();
@@ -90,7 +123,35 @@ export default function Visualizer({ document, onClose }: Props) {
     };
 
     loadContent();
-  }, [document.id, document.name, fileUrl]);
+  }, [document.id, document.name, fileUrl, document.tags]);
+
+  const handleAddTag = async () => {
+    if (!newTag.trim() || tags.includes(newTag.trim())) return;
+    const updatedTags = [...tags, newTag.trim()];
+    try {
+      await axios.put(`${API_BASE}/documents/${document.id}/tags`, {
+        tags: updatedTags,
+      });
+      setTags(updatedTags);
+      setNewTag("");
+      toast.success("Tag added");
+    } catch {
+      toast.error("Failed to add tag");
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    const updatedTags = tags.filter((t) => t !== tagToRemove);
+    try {
+      await axios.put(`${API_BASE}/documents/${document.id}/tags`, {
+        tags: updatedTags,
+      });
+      setTags(updatedTags);
+      toast.success("Tag removed");
+    } catch {
+      toast.error("Failed to remove tag");
+    }
+  };
 
   const renderContent = () => {
     switch (type) {
@@ -180,18 +241,23 @@ export default function Visualizer({ document, onClose }: Props) {
         );
       default:
         return (
-          <div className="flex flex-col items-center justify-center text-center h-[300px]">
-            <FileText size={48} className="text-gray-900 opacity-10 mb-4" />
-            <p className="text-gray-500 mb-6 font-normal">
-              Preview not available for <b>.{type}</b>
+          <div className="flex flex-col items-center justify-center text-center h-full min-h-[400px]">
+            <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center text-gray-400 mb-6">
+              <FileText size={40} />
+            </div>
+            <p className="text-gray-900 font-semibold text-lg mb-2">
+              Preview not available
+            </p>
+            <p className="text-gray-500 mb-8 max-w-[280px]">
+              We couldn't generate a preview for <b>.{type}</b> files. You can
+              still download it below.
             </p>
             <a
               href={fileUrl}
               download
-              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90"
+              className="bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center transition-all hover:bg-blue-700 shadow-lg shadow-blue-500/20"
             >
-              <Download size={16} className="mr-2" /> Download{" "}
-              {type.toUpperCase()} File
+              <Download size={18} className="mr-2" /> Download Document
             </a>
           </div>
         );
@@ -199,66 +265,229 @@ export default function Visualizer({ document, onClose }: Props) {
   };
 
   return (
-    <>
-      <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-20 sticky top-0">
+    <div className="flex h-full flex-col">
+      <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-20 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center text-blue-600 shrink-0">
-            <FileText size={18} />
+          <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+            <FileText size={20} strokeWidth={2.5} />
           </div>
           <div className="min-w-0">
             <h2
-              className="text-sm font-semibold truncate"
+              className="text-[15px] font-bold text-gray-900 truncate"
               title={document.name}
             >
               {document.name}
             </h2>
-            <p className="text-xs text-gray-500">
-              {document.category} •{" "}
-              {(document.cloudSource || "local").toUpperCase()}
-            </p>
+            <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
+              <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-600 uppercase tracking-wider">
+                {document.category}
+              </span>
+              <span className="w-1 h-1 rounded-full bg-gray-300" />
+              <span className="capitalize">
+                {document.cloudSource || "local"}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowMetadata(!showMetadata)}
+            className={`p-2 rounded-xl transition-all cursor-pointer border ${
+              showMetadata
+                ? "bg-blue-600 text-white border-blue-600"
+                : "text-gray-500 hover:bg-gray-100 hover:text-blue-600 border-transparent hover:border-gray-200"
+            }`}
+            title={showMetadata ? "Hide Info" : "Show Info"}
+          >
+            <Info size={18} />
+          </button>
           <a
             href={fileUrl}
             target="_blank"
             rel="noreferrer"
-            className="p-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-all cursor-pointer border border-transparent hover:border-gray-200"
             title="Open in new tab"
           >
-            <ExternalLink size={16} />
+            <ExternalLink size={18} />
           </a>
           <button
             onClick={onClose}
-            className="p-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center"
+            className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 hover:text-red-500 transition-all cursor-pointer border border-transparent hover:border-gray-200"
             title="Close Preview"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
       </header>
-      <div className="flex-1 overflow-y-auto bg-gray-50 p-6">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center h-[300px]">
-            <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin inline-block" />
-            <p className="mt-4 text-gray-500 text-sm">Preparing preview...</p>
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto bg-gray-50/50 p-6">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              <p className="mt-4 text-gray-500 text-sm font-medium">
+                Loading content...
+              </p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full text-center p-4">
+              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
+                <Info size={32} />
+              </div>
+              <p className="text-gray-900 font-bold text-lg mb-2">
+                Error Loading Preview
+              </p>
+              <p className="text-gray-500 mb-8 max-w-[300px]">{error}</p>
+              <a
+                href={fileUrl}
+                download
+                className="bg-gray-900 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center transition-all hover:opacity-90"
+              >
+                <Download size={18} className="mr-2" /> Download File Instead
+              </a>
+            </div>
+          ) : (
+            <div className="h-full max-w-5xl mx-auto">{renderContent()}</div>
+          )}
+        </div>
+
+        {/* Metadata Sidebar (Toggleable) */}
+        {showMetadata && (
+          <div className="w-80 border-l border-gray-200 bg-white overflow-y-auto p-6 flex flex-col gap-8 shrink-0 animate-in slide-in-from-right duration-300">
+            {/* File Info Section */}
+            <div>
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Info size={14} /> File Information
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Hash className="text-gray-400 mt-0.5" size={16} />
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                      Size
+                    </p>
+                    <p className="text-sm font-bold text-gray-900 font-mono">
+                      {formatFileSize(document.fileSize)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Calendar className="text-gray-400 mt-0.5" size={16} />
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                      Uploaded At
+                    </p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {document.uploadedAt
+                        ? format(
+                            new Date(document.uploadedAt),
+                            "MMM d, yyyy HH:mm",
+                          )
+                        : "Unknown"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <Clock className="text-gray-400 mt-0.5" size={16} />
+                  <div>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                      Last Modified
+                    </p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {format(
+                        new Date(document.lastModified),
+                        "MMM d, yyyy HH:mm",
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {document.encrypted && (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center text-emerald-600">
+                      <ShieldCheck size={18} strokeWidth={2.5} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-emerald-900">
+                        Encrypted
+                      </p>
+                      <p className="text-[10px] text-emerald-700 font-medium">
+                        Protected Metadata Layer
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Tags Section */}
+            <div>
+              <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <TagIcon size={14} /> Management Tags
+              </h3>
+              <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {tags.length > 0 ? (
+                    tags.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className="group inline-flex items-center gap-1.5 bg-white border border-blue-100 text-blue-600 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm transition-all hover:border-blue-300 hover:shadow-md"
+                      >
+                        {tag}
+                        <button
+                          onClick={() => handleRemoveTag(tag)}
+                          className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-all"
+                        >
+                          <X size={12} />
+                        </button>
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-[10px] text-gray-400 font-medium italic">
+                      No tags assigned yet.
+                    </p>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Add new tag..."
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddTag()}
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-300 pr-10"
+                  />
+                  <button
+                    onClick={handleAddTag}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-blue-600 text-white rounded-lg flex items-center justify-center hover:bg-blue-700 transition-all shadow-md shadow-blue-500/10"
+                  >
+                    <Plus size={14} strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-6 border-t border-gray-100">
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    const link = window.document.createElement("a");
+                    link.href = fileUrl;
+                    link.download = document.name;
+                    link.click();
+                  }}
+                  className="w-full bg-gray-900 text-white py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg"
+                >
+                  <Download size={14} /> Download File
+                </button>
+              </div>
+            </div>
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center h-[300px] text-center p-4">
-            <FileText size={40} className="text-blue-600 opacity-20 mb-4" />
-            <p className="text-blue-600 mb-4">{error}</p>
-            <a
-              href={fileUrl}
-              download
-              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90"
-            >
-              <Download size={16} className="mr-2" /> Download File
-            </a>
-          </div>
-        ) : (
-          renderContent()
         )}
       </div>
-    </>
+    </div>
   );
 }

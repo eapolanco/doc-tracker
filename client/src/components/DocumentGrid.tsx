@@ -23,6 +23,7 @@ import {
   ArrowDown,
   AlertTriangle,
   RefreshCcw,
+  Lock,
 } from "lucide-react";
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
@@ -107,6 +108,15 @@ const getFileIcon = (item: FileSystemItem) => {
       return { icon: File, color: "text-blue-600", bg: "bg-blue-50" };
   }
 };
+const formatFileSize = (bytes?: number) => {
+  if (bytes === undefined || bytes === null) return "";
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
 export default function DocumentGrid({
   documents,
   onPreview,
@@ -121,6 +131,8 @@ export default function DocumentGrid({
   onSort,
   isTrash = false,
 }: Props) {
+  // ... (rest of the state and handlers)
+
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -626,6 +638,13 @@ export default function DocumentGrid({
                 <ArrowDown size={12} />
               ))}
           </div>
+          <div className="w-32">Tags</div>
+          <div
+            className="w-24 px-2 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header text-right justify-end"
+            onClick={() => onSort?.("name")} // Reuse sort or add size sort later
+          >
+            Size
+          </div>
           <div
             className="w-40 cursor-pointer hover:text-gray-900 flex items-center gap-1 group/header"
             onClick={() => onSort?.("category")}
@@ -713,13 +732,37 @@ export default function DocumentGrid({
                 {renamingId === doc.id ? (
                   renderRenameInput(doc as Document)
                 ) : (
-                  <div
-                    className="text-sm font-semibold text-gray-900 truncate"
-                    title={doc.name}
-                  >
-                    {doc.name}
+                  <div className="flex flex-col">
+                    <div
+                      className="text-sm font-semibold text-gray-900 truncate"
+                      title={doc.name}
+                    >
+                      {doc.name}
+                    </div>
                   </div>
                 )}
+              </div>
+
+              <div className="w-32 flex flex-wrap gap-1">
+                {(() => {
+                  try {
+                    const tagsArray = JSON.parse(doc.tags || "[]");
+                    return tagsArray.map((tag: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-medium border border-gray-200"
+                      >
+                        {tag}
+                      </span>
+                    ));
+                  } catch {
+                    return null;
+                  }
+                })()}
+              </div>
+
+              <div className="w-24 text-right px-2 text-xs text-gray-500 font-mono">
+                {formatFileSize((doc as Document).fileSize)}
               </div>
 
               <div className="w-40">
@@ -749,7 +792,7 @@ export default function DocumentGrid({
   }
 
   return (
-    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 relative">
+    <div className="grid gap-6 py-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 relative">
       {documents.map((doc) => {
         const { icon: Icon, color, bg } = getFileIcon(doc);
         const isSelected = selectedIds.has(doc.id);
@@ -847,16 +890,58 @@ export default function DocumentGrid({
               )}
 
               <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 mt-auto">
-                <div className="text-[11px] text-gray-400 font-medium">
-                  {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[10px] text-gray-400 font-medium">
+                    {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                  </div>
+                  {doc.type === "file" && (
+                    <div className="text-[10px] text-blue-600 font-mono font-bold">
+                      {formatFileSize((doc as Document).fileSize)}
+                    </div>
+                  )}
                 </div>
 
-                {isFolder && (
-                  <div className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
-                    Folder
-                  </div>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {isFolder && (
+                    <div className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
+                      Folder
+                    </div>
+                  )}
+                  {doc.encrypted && (
+                    <div className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Lock size={10} /> Encrypted
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Tags in Grid View */}
+              {doc.tags && doc.tags !== "[]" && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {(() => {
+                    try {
+                      const tagsArray = JSON.parse(doc.tags || "[]");
+                      return tagsArray
+                        .slice(0, 3)
+                        .map((tag: string, idx: number) => (
+                          <span
+                            key={idx}
+                            className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[9px] font-bold border border-blue-100"
+                          >
+                            {tag}
+                          </span>
+                        ));
+                    } catch {
+                      return null;
+                    }
+                  })()}
+                  {JSON.parse(doc.tags || "[]").length > 3 && (
+                    <span className="text-[9px] text-gray-400">
+                      +{JSON.parse(doc.tags || "[]").length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         );

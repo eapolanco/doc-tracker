@@ -512,7 +512,7 @@ function App() {
   const Breadcrumbs = () => {
     if (searchQuery) {
       return (
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mt-4">
           <div className="flex items-center gap-2 text-xs font-medium text-gray-500">
             <Search size={14} className="text-blue-500" />
             <span>Search results for</span>
@@ -532,7 +532,7 @@ function App() {
 
     const parts = currentPath ? currentPath.split("/") : [];
     return (
-      <div className="flex items-center gap-2 mb-4 text-xs font-medium text-gray-500 overflow-x-auto whitespace-nowrap pb-2">
+      <div className="flex items-center gap-2 mb-4 text-xs font-medium text-gray-500 flex-wrap">
         <button
           onClick={() => setCurrentPath("")}
           onDragOver={(e) => {

@@ -6,10 +6,13 @@ export const documents = sqliteTable("documents", {
   name: text("name").notNull(),
   category: text("category").notNull(),
   path: text("path").notNull(),
-  cloudSource: text("cloud_source"), // 'google' | 'onedrive' | 'local'
+  cloudSource: text("cloud_source"), // 'google' | 'onedrive' | 'local' | 'upload'
   status: text("status").default("valid"), // 'valid' | 'corrupted' | 'missing'
   encrypted: integer("encrypted", { mode: "boolean" }).default(false),
   type: text("type").default("file"), // 'file' | 'folder'
+  fileSize: integer("file_size"), // Size in bytes (null for folders)
+  tags: text("tags"), // JSON array of tags
+  uploadedAt: integer("uploaded_at", { mode: "timestamp" }), // When file was first added
   lastModified: integer("last_modified", { mode: "timestamp" }).notNull(),
   deleted: integer("deleted", { mode: "boolean" }).default(false),
 });

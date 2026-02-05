@@ -6,7 +6,11 @@ export interface Document {
   cloudSource: string;
   status: "valid" | "corrupted" | "missing"; // Status of the file
   lastModified: string;
+  uploadedAt?: string;
   type: "file" | "folder"; // Now mandatory as it comes from DB, defaulting to file if missing in old records
+  fileSize?: number;
+  tags?: string; // Stored as JSON string in DB
+  encrypted?: boolean;
 }
 
 export interface FolderItem {
@@ -17,7 +21,11 @@ export interface FolderItem {
   cloudSource: string;
   category: string;
   lastModified: string;
+  uploadedAt?: string;
   status: "valid" | "corrupted" | "missing";
+  fileSize?: number;
+  tags?: string;
+  encrypted?: boolean;
 }
 
 export type FileSystemItem = Document | FolderItem;

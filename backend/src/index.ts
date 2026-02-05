@@ -176,6 +176,9 @@ async function scanDirectory(dir: string, category: string = "General") {
             cloudSource: "local",
             type: "folder",
             status: "valid",
+            fileSize: null, // Folders don't have a size
+            tags: "[]", // Empty tags array
+            uploadedAt: new Date(),
             lastModified: folderStats.mtime,
           });
         }
@@ -204,6 +207,9 @@ async function scanDirectory(dir: string, category: string = "General") {
             cloudSource: "local",
             type: "file",
             status: status,
+            fileSize: stats.size, // Store file size in bytes
+            tags: "[]", // Empty tags array
+            uploadedAt: new Date(), // First time we see this file
             lastModified: stats.mtime,
           });
 
@@ -731,6 +737,12 @@ app.post("/api/documents/copy", async (req, res) => {
               category: targetCategory,
               path: newRelativePath,
               cloudSource: doc.cloudSource,
+              type: doc.type,
+              status: doc.status,
+              encrypted: doc.encrypted,
+              fileSize: doc.fileSize, // Preserve file size
+              tags: doc.tags, // Preserve tags
+              uploadedAt: new Date(), // New upload timestamp for the copy
               lastModified: new Date(),
             })
             .run();
@@ -837,6 +849,9 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       cloudSource: "upload",
       status: "valid",
       encrypted: true,
+      fileSize: req.file.size, // Original file size before encryption
+      tags: "[]", // Empty tags array, can be updated later
+      uploadedAt: new Date(), // Track when file was uploaded
       lastModified: new Date(),
     });
 
@@ -896,6 +911,9 @@ app.post("/api/folders", async (req, res) => {
       cloudSource: "local",
       type: "folder",
       status: "valid",
+      fileSize: null, // Folders don't have a size
+      tags: "[]", // Empty tags array
+      uploadedAt: new Date(),
       lastModified: new Date(),
     });
 
@@ -910,6 +928,44 @@ app.post("/api/folders", async (req, res) => {
   } catch (err) {
     console.error("Create folder error:", err);
     res.status(500).json({ error: "Failed to create folder" });
+  }
+});
+
+// Update document tags
+app.put("/api/documents/:id/tags", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tags } = req.body;
+
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({ error: "Tags must be an array" });
+    }
+
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    // Update tags
+    await db
+      .update(documents)
+      .set({ tags: JSON.stringify(tags) })
+      .where(eq(documents.id, id));
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "update",
+      timestamp: new Date(),
+      details: `Updated tags to: ${tags.join(", ")}`,
+    });
+
+    res.json({ success: true, tags });
+  } catch (error) {
+    console.error("Update tags error:", error);
+    res.status(500).json({ error: "Failed to update tags" });
   }
 });
 
