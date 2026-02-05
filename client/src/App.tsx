@@ -1,82 +1,83 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { LayoutGroup, MotionConfig } from "framer-motion";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "sonner";
 import type { AppSettings } from "@/types";
-import { appRegistry } from "@/core/registry/FeatureRegistry";
-import { eventBus } from "@/core/services/EventBus"; // Import EventBus
+import { manifestLoader } from "@/core/manifest/ManifestLoader";
+import ViewRenderer from "@/components/views/ViewRenderer";
+import type { ViewType } from "@/core/registry/ViewRegistry";
+import { eventBus } from "@/core/services/EventBus";
 
 const API_BASE = "/api";
 
 function App() {
-  const getInitialTab = () => {
+  const getInitialState = () => {
     const params = new URLSearchParams(window.location.search);
     const viewIdParam = params.get("viewid");
 
-    // Check for OAuth callbacks first
-    if (params.has("success") || params.has("error")) {
-      return "settings";
-    }
+    // Default to document management
+    const state = {
+      activeTab: "docs_all",
+      model: "document",
+      viewType: "main" as ViewType,
+    };
 
     if (viewIdParam) {
-      if (["all", "local", "onedrive", "google"].includes(viewIdParam)) {
-        return "docs";
+      if (["local", "onedrive", "google", "all"].includes(viewIdParam)) {
+        return { ...state, activeTab: `docs_${viewIdParam}` };
       }
-      const feature = appRegistry.get(viewIdParam);
-      if (feature) {
-        return feature.id;
+
+      // Try to find a nav item that matches this viewid
+      const navItems = manifestLoader.getNavItems();
+      const match = navItems.find((item) => item.id === viewIdParam);
+      if (match && match.action?.type === "view") {
+        return {
+          activeTab: match.id,
+          model: match.action.model || "document",
+          viewType: (match.action.viewType as ViewType) || "main",
+        };
       }
     }
-    return "docs";
+
+    return state;
   };
 
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [activeTab, setActiveTab] = useState<string>(getInitialTab);
+  const [{ activeTab, model, viewType }, setViewState] =
+    useState(getInitialState);
 
   // Event Bus Listener for Navigation
   useEffect(() => {
     const handleNavigation = (featureId: string) => {
-      setActiveTab(featureId);
+      const navItems = manifestLoader.getNavItems();
+      const match = navItems.find((item) => item.id === featureId);
+      if (match && match.action?.type === "view") {
+        setViewState({
+          activeTab: match.id,
+          model: match.action.model || "document",
+          viewType: (match.action.viewType as ViewType) || "main",
+        });
+      }
     };
 
     eventBus.on("navigation:feature", handleNavigation);
-
-    return () => {
-      eventBus.off("navigation:feature", handleNavigation);
-    };
+    return () => eventBus.off("navigation:feature", handleNavigation);
   }, []);
 
   // Update URL Parameters when state changes
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
-    let viewId = "";
-    if (activeTab === "docs") {
-      // Leave viewid as is if it was set by DocumentsMain (e.g. "local")
-      // OR if it's empty, default to "all" is handled by DocumentsMain
-      // App.tsx mostly cares about switching features now.
-      // If we switched TO docs, we might want to default to "all" if param is missing?
-      // But existing params are preserved.
-      // Wait, if I switch from Settings to Docs, params might still be `viewid=settings`?
-      // Yes.
-      if (
-        params.get("viewid") !== "local" &&
-        params.get("viewid") !== "onedrive" &&
-        params.get("viewid") !== "google" &&
-        params.get("viewid") !== "all"
-      ) {
-        viewId = "all";
-      }
+    // Legacy viewid handling for documents
+    if (activeTab.startsWith("docs_")) {
+      params.set("viewid", activeTab.replace("docs_", ""));
     } else {
-      viewId = activeTab;
+      params.set("viewid", activeTab);
     }
 
-    if (viewId) params.set("viewid", viewId);
-
-    // We don't touch 'id' or 'view' params here anymore, feature handles them.
-    // Except we might want to clean them up if switching features?
-    if (activeTab !== "docs") {
+    // Clean up older params if not in docs
+    if (!activeTab.startsWith("docs_")) {
       params.delete("id");
       params.delete("view");
     }
@@ -111,10 +112,24 @@ function App() {
     fetchSettings();
   }, []);
 
-  // The "navItems" prop in Sidebar handles the onClick via the Registry/Events or setActiveTab
-  // But Sidebar component needs `setActiveTab` to pass to those items IF they are simple links?
-  // Our Sidebar implementation calls `setActiveTab` if item.path exists and no onClick.
-  // So we just pass setActiveTab.
+  const navItems = useMemo(() => manifestLoader.getNavItems(), []);
+
+  const handleSetTab = (tabId: string) => {
+    const match = navItems.find((item) => item.id === tabId);
+    if (match && match.action?.type === "view") {
+      setViewState({
+        activeTab: match.id,
+        model: match.action.model || "document",
+        viewType: (match.action.viewType as ViewType) || "main",
+      });
+    } else {
+      // Fallback for string-based tabs if needed
+      if (tabId === "settings") {
+        const settingsNav = navItems.find((i) => i.id === "settings_main");
+        if (settingsNav) handleSetTab(settingsNav.id);
+      }
+    }
+  };
 
   return (
     <MotionConfig
@@ -122,25 +137,18 @@ function App() {
         appSettings?.app?.animationsEnabled ? undefined : { duration: 0 }
       }
     >
-      <div className="flex h-screen w-full overflow-hidden bg-gray-50">
+      <div className="flex h-screen w-full overflow-hidden bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
         <Toaster position="top-right" richColors closeButton />
         <Sidebar
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          sourceFilter={null} // Deprecated/Unused by Sidebar now
-          setSourceFilter={() => {}} // Deprecated
-          setCurrentPath={() => {}} // Deprecated
-          navItems={appRegistry.getNavItems()}
+          setActiveTab={handleSetTab}
+          navItems={navItems}
         />
 
         <main className="flex-1 overflow-hidden flex flex-col">
           <LayoutGroup>
-            {/* 
-                We render the active feature's component.
-                The FeatureRegistry handles returning the component.
-            */}
             <div className="flex flex-1 overflow-hidden relative">
-              {appRegistry.get(activeTab)?.viewComponent}
+              <ViewRenderer key={activeTab} model={model} type={viewType} />
             </div>
           </LayoutGroup>
         </main>

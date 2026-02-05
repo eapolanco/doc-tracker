@@ -30,11 +30,27 @@ export interface ViewExtension {
 
 class ViewRegistry {
   private baseViews: Map<string, ViewDefinition> = new Map();
+  // Index for fast lookups by model and type: model -> type -> ViewDefinition[]
+  private modelTypeIndex: Map<string, Map<ViewType, ViewDefinition[]>> =
+    new Map();
   private extensions: ViewExtension[] = [];
   private cachedResolvedViews: Map<string, ViewDefinition> = new Map();
 
   registerView(view: ViewDefinition) {
     this.baseViews.set(view.id, view);
+
+    // Update index
+    if (!this.modelTypeIndex.has(view.model)) {
+      this.modelTypeIndex.set(view.model, new Map());
+    }
+    const types = this.modelTypeIndex.get(view.model)!;
+    if (!types.has(view.type)) {
+      types.set(view.type, []);
+    }
+    types.get(view.type)!.push(view);
+    // Sort by priority after adding
+    types.get(view.type)!.sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
     this.cachedResolvedViews.clear();
   }
 
@@ -52,7 +68,9 @@ class ViewRegistry {
     if (!base) return undefined;
 
     // Apply patches
-    let resolvedArch = JSON.parse(JSON.stringify(base.arch));
+    // WE MUST NOT USE JSON.stringify here! It strips React components (functions).
+    // For 40,000 features, we use a simple spread for the base and apply changes.
+    let resolvedArch = { ...base.arch };
     const relevantExtensions = this.extensions.filter(
       (ex) => ex.inherit_id === viewId,
     );
@@ -69,12 +87,11 @@ class ViewRegistry {
   }
 
   getView(model: string, type: ViewType): ViewDefinition | undefined {
-    // Find highest priority view for model/type
-    const matchingViews = Array.from(this.baseViews.values())
-      .filter((v) => v.model === model && v.type === type)
-      .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    const matchingViews = this.modelTypeIndex.get(model)?.get(type);
 
-    if (matchingViews.length === 0) return undefined;
+    if (!matchingViews || matchingViews.length === 0) return undefined;
+
+    // Return highest priority view (first in sorted list)
     return this.getResolvedView(matchingViews[0].id);
   }
 

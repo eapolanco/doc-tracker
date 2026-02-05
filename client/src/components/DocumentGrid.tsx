@@ -602,13 +602,13 @@ export default function DocumentGrid({
 
   if (documents.length === 0) {
     return (
-      <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center text-center text-gray-500 animate-in fade-in zoom-in duration-500">
-        <div className="w-20 h-20 rounded-3xl bg-gray-50 flex items-center justify-center mb-6 shadow-inner">
-          <Folder size={40} className="text-gray-300" />
+      <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center text-center text-gray-500 animate-in fade-in zoom-in duration-500 dark:text-slate-400">
+        <div className="w-20 h-20 rounded-3xl bg-gray-50 flex items-center justify-center mb-6 shadow-inner dark:bg-slate-800">
+          <Folder size={40} className="text-gray-300 dark:text-slate-600" />
         </div>
         {isSearching ? (
           <>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 dark:text-white">
               No matches found
             </h3>
             <p className="text-sm">
@@ -617,7 +617,7 @@ export default function DocumentGrid({
           </>
         ) : isTrash ? (
           <>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 dark:text-white">
               Your trash is clean
             </h3>
             <p className="text-sm max-w-xs">
@@ -627,7 +627,7 @@ export default function DocumentGrid({
           </>
         ) : (
           <>
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1 dark:text-white">
               Your library is empty
             </h3>
             <p className="text-sm max-w-xs">
