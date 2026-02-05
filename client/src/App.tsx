@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion, LayoutGroup } from "framer-motion";
+import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import DocumentGrid from "@/components/DocumentGrid";
@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   FolderPlus,
   Trash2,
+  X,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type {
@@ -630,21 +631,6 @@ function App() {
             </div>
 
             <div className="flex gap-3 items-center">
-              {clipboard && (
-                <button
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
-                  onClick={() => {
-                    if (clipboard.type === "copy") {
-                      handleCopy(clipboard.ids, currentPath);
-                    } else {
-                      handleMove(clipboard.ids, currentPath);
-                    }
-                  }}
-                >
-                  <ClipboardCheck size={16} />
-                  Paste Here ({clipboard.ids.length})
-                </button>
-              )}
               {(activeTab === "docs" || activeTab === "trash") && (
                 <>
                   <div className="relative group">
@@ -810,6 +796,56 @@ function App() {
             onCreate={submitCreateFolder}
           />
         )}
+
+        {/* Global Paste Bar */}
+        <AnimatePresence>
+          {clipboard && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: 50, x: "-50%" }}
+              className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
+            >
+              <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                  <span className="text-xs font-black">
+                    {clipboard.ids.length}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black text-indigo-600 uppercase tracking-wider leading-none">
+                    Clipboard
+                  </span>
+                  <span className="text-[13px] font-bold text-gray-900 leading-tight">
+                    {clipboard.type === "copy" ? "To Copy" : "To Move"}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (clipboard.type === "copy") {
+                    handleCopy(clipboard.ids, currentPath);
+                  } else {
+                    handleMove(clipboard.ids, currentPath);
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 group"
+              >
+                <ClipboardCheck size={18} />
+                Paste Here
+              </button>
+
+              <button
+                onClick={() => setClipboard(null)}
+                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                title="Clear Clipboard"
+              >
+                <X size={20} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Global Upload Progress Bar */}
         {uploadProgress !== null && (

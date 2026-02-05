@@ -558,11 +558,27 @@ export default function DocumentGrid({
   }
 
   const bulkActionsBar = selectedIds.size > 0 && (
-    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-6 animate-in slide-in-from-bottom-4 duration-300">
-      <span className="text-sm font-medium border-r border-gray-700 pr-6">
-        {selectedIds.size} items selected
-      </span>
-      <div className="flex items-center gap-4">
+    <motion.div
+      initial={{ opacity: 0, y: 50, x: "-50%" }}
+      animate={{ opacity: 1, y: 0, x: "-50%" }}
+      exit={{ opacity: 0, y: 50, x: "-50%" }}
+      className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
+    >
+      <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
+        <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30">
+          <span className="text-xs font-black">{selectedIds.size}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[11px] font-black text-blue-600 uppercase tracking-wider leading-none">
+            Selected
+          </span>
+          <span className="text-[13px] font-bold text-gray-900 leading-tight">
+            Items
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5">
         {!isTrash && (
           <>
             <button
@@ -574,9 +590,12 @@ export default function DocumentGrid({
                   });
                 setSelectedIds(new Set());
               }}
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all active:scale-95 group"
             >
-              <Copy size={16} />
+              <Copy
+                size={18}
+                className="text-gray-400 group-hover:text-blue-500"
+              />
               Copy
             </button>
             <button
@@ -588,43 +607,46 @@ export default function DocumentGrid({
                   });
                 setSelectedIds(new Set());
               }}
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 rounded-xl transition-all active:scale-95 group"
             >
-              <Scissors size={16} />
+              <Scissors
+                size={18}
+                className="text-gray-400 group-hover:text-indigo-500"
+              />
               Cut
             </button>
-            <div className="w-px h-4 bg-gray-700 mx-2" />
           </>
         )}
 
         {isTrash && (
-          <>
-            <button
-              onClick={handleBulkRestore}
-              className="flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
-            >
-              <RefreshCcw size={16} />
-              Restore
-            </button>
-            <div className="w-px h-4 bg-gray-700 mx-2" />
-          </>
+          <button
+            onClick={handleBulkRestore}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all active:scale-95"
+          >
+            <RefreshCcw size={18} />
+            Restore
+          </button>
         )}
 
         <button
           onClick={handleBulkDelete}
-          className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95"
         >
-          <Trash2 size={16} />
+          <Trash2 size={18} />
           {isTrash ? "Delete Forever" : "Delete"}
         </button>
+
+        <div className="w-px h-8 bg-gray-100 mx-1" />
+
         <button
           onClick={() => setSelectedIds(new Set())}
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all"
+          title="Clear Selection"
         >
-          Clear
+          <X size={20} />
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 
   if (viewType === "list") {
