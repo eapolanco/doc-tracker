@@ -1,5 +1,6 @@
 import { X, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Button from "./Button";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -59,34 +60,27 @@ export default function ConfirmModal({
                   {message}
                 </p>
               </div>
-              <button
+              <Button
+                variant="ghost"
                 onClick={onClose}
-                className="shrink-0 p-1 text-gray-400 hover:text-gray-500 transition-colors"
-              >
-                <X size={20} />
-              </button>
+                icon={X}
+                className="shrink-0 p-1"
+              />
             </div>
           </div>
           <div className="px-6 py-4 bg-gray-50 flex flex-col sm:flex-row-reverse gap-3">
-            <button
+            <Button
+              variant={variant === "danger" ? "danger" : "primary"}
               onClick={() => {
                 onConfirm();
                 onClose();
               }}
-              className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm hover:shadow-md ${
-                variant === "danger"
-                  ? "bg-red-600 text-white hover:bg-red-700 active:scale-95"
-                  : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95"
-              }`}
             >
               {confirmText}
-            </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-lg text-sm font-semibold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all shadow-xs"
-            >
+            </Button>
+            <Button variant="outline" onClick={onClose}>
               {cancelText}
-            </button>
+            </Button>
           </div>
         </motion.div>
       </div>

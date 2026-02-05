@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Upload, X, FolderOpen, CheckCircle, AlertCircle } from "lucide-react";
+import Button from "@/components/Button";
 
 interface Props {
   onClose: () => void;
@@ -75,7 +76,7 @@ export default function UploadModal({
       const data = await response.json();
 
       if (response.ok && data.results) {
-        data.results.forEach((res: any) => {
+        data.results.forEach((res: { status: string; name: string }) => {
           if (res.status === "success") {
             success.push(res.name);
           } else {
@@ -127,13 +128,12 @@ export default function UploadModal({
             <Upload size={20} />
             <h2 className="text-lg font-semibold">Upload Documents</h2>
           </div>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="p-2 rounded-lg text-gray-500 transition-colors flex items-center justify-center hover:bg-gray-100 hover:text-gray-900"
-            title="Close"
-          >
-            <X size={18} />
-          </button>
+            icon={X}
+            className="p-2 h-auto"
+          />
         </header>
 
         <div className="overflow-y-auto p-6">
@@ -269,30 +269,18 @@ export default function UploadModal({
           )}
 
           {/* Upload Button */}
-          <button
+          <Button
+            variant="secondary"
             onClick={handleUpload}
-            disabled={selectedFiles.length === 0 || uploading}
-            className={`w-full p-3 text-sm flex items-center justify-center rounded-lg font-medium transition-all duration-200 ${
-              selectedFiles.length === 0 || uploading
-                ? "bg-gray-900 text-white opacity-50 cursor-not-allowed"
-                : "bg-gray-900 text-white hover:opacity-90"
-            }`}
+            disabled={selectedFiles.length === 0}
+            loading={uploading}
+            className="w-full"
+            icon={uploading ? undefined : Upload}
           >
-            {uploading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload size={16} className="mr-2" />
-                Upload{" "}
-                {selectedFiles.length > 0
-                  ? `${selectedFiles.length} file(s)`
-                  : ""}
-              </>
-            )}
-          </button>
+            {uploading
+              ? "Uploading..."
+              : `Upload ${selectedFiles.length > 0 ? `${selectedFiles.length} file(s)` : ""}`}
+          </Button>
         </div>
       </div>
     </div>

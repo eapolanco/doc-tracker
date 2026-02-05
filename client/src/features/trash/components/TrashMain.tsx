@@ -6,17 +6,18 @@ import DocumentGrid from "@/components/DocumentGrid";
 import type { Document } from "@/types";
 import Page from "@/components/Page";
 import { createConditionalActions } from "@/hooks/useFeatureActions";
+import LayoutSwitcher from "@/components/LayoutSwitcher";
+import { useViewOptions } from "@/hooks/useViewOptions";
+
+import Button from "@/components/Button";
 
 const API_BASE = "/api";
 
 export default function TrashMain() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewType] = useState<"grid" | "list">("grid");
-  const [sortField, setSortField] = useState<"name" | "date" | "category">(
-    "date",
-  );
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const { viewType, setViewType, sortField, sortOrder, handleSort } =
+    useViewOptions("grid");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [clipboard, setClipboard] = useState<{
@@ -119,39 +120,45 @@ export default function TrashMain() {
       {
         condition: selectedIds.size > 0,
         action: (
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-blue-700"
+          <Button
+            variant="primary"
+            icon={RefreshCcw}
             onClick={handleRestoreSelected}
-            disabled={loading}
+            loading={loading}
           >
-            <RefreshCcw size={16} />
             Restore Selected ({selectedIds.size})
-          </button>
+          </Button>
         ),
       },
       {
         condition: true,
         action: (
-          <button
-            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-emerald-700"
+          <Button
+            variant="success"
+            icon={RefreshCcw}
             onClick={handleRestoreAll}
-            disabled={loading}
+            loading={loading}
           >
-            <RefreshCcw size={16} />
             Restore All
-          </button>
+          </Button>
         ),
       },
       {
         condition: true,
         action: (
-          <button
-            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
-            onClick={handleEmptyTrash}
-            disabled={loading}
-          >
+          <Button variant="danger" onClick={handleEmptyTrash} loading={loading}>
             Empty Trash
-          </button>
+          </Button>
+        ),
+      },
+      {
+        condition: true,
+        action: (
+          <LayoutSwitcher
+            viewType={viewType}
+            onViewChange={setViewType}
+            className="ml-2"
+          />
         ),
       },
     ]);
@@ -165,23 +172,14 @@ export default function TrashMain() {
           onRefresh={fetchTrash}
           viewType={viewType}
           isSearching={false}
-          // No move/copy allowed IN trash usually, but maybe restore move?
-          // We'll pass handlers to satisfy typescript
           onMove={async () => {}}
           onSetClipboard={setClipboard}
           clipboardStatus={clipboard}
           sortField={sortField}
           sortOrder={sortOrder}
-          onSort={(field) => {
-            if (sortField === field) {
-              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-            } else {
-              setSortField(field);
-              setSortOrder("asc");
-            }
-          }}
+          onSort={handleSort}
           isTrash={true}
-          animationsEnabled={true} // Defaults
+          animationsEnabled={true}
           selectedIds={selectedIds}
           onSelectionChange={setSelectedIds}
         />

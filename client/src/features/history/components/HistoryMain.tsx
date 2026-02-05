@@ -4,6 +4,7 @@ import { RefreshCw } from "lucide-react";
 import HistoryTimeline from "@/components/HistoryTimeline"; // For now, import the shared one
 import type { HistoryItem } from "@/types";
 import Page from "@/components/Page";
+import Button from "@/components/Button";
 
 const API_BASE = "/api";
 
@@ -32,14 +33,14 @@ export default function HistoryMain() {
 
   // Define feature-specific header actions
   const headerActions = (
-    <button
-      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+    <Button
+      variant="primary"
+      icon={RefreshCw}
       onClick={fetchHistory}
-      disabled={loading}
+      loading={loading}
     >
-      <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
       Refresh
-    </button>
+    </Button>
   );
 
   if (loading && history.length === 0) {
