@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   File,
@@ -48,6 +48,8 @@ interface Props {
   onSort?: (field: "name" | "date" | "category") => void;
   isTrash?: boolean;
   animationsEnabled?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (selectedIds: Set<string>) => void;
 }
 
 const API_BASE = "/api";
@@ -149,13 +151,30 @@ export default function DocumentGrid({
   onSort,
   isTrash = false,
   animationsEnabled = false,
+  selectedIds: controlledSelectedIds,
+  onSelectionChange,
 }: Props) {
   // ... (rest of the state and handlers)
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [internalSelectedIds, setInternalSelectedIds] = useState<Set<string>>(
+    new Set(),
+  );
+
+  // Use controlled selection if provided, otherwise use internal state
+  const selectedIds = controlledSelectedIds ?? internalSelectedIds;
+  const setSelectedIds = useCallback(
+    (newSelection: Set<string>) => {
+      if (onSelectionChange) {
+        onSelectionChange(newSelection);
+      } else {
+        setInternalSelectedIds(newSelection);
+      }
+    },
+    [onSelectionChange],
+  );
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
@@ -192,7 +211,7 @@ export default function DocumentGrid({
   // Clear selection when documents length changes
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [documents.length]);
+  }, [documents.length, setSelectedIds]);
 
   const toggleSelect = (
     e: React.MouseEvent | React.ChangeEvent,

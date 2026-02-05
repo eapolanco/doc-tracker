@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
+import { RefreshCcw } from "lucide-react";
 import DocumentGrid from "@/components/DocumentGrid";
 import type { Document } from "@/types";
 import Page from "@/components/Page";
@@ -15,6 +16,7 @@ export default function TrashMain() {
     "date",
   );
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [clipboard, setClipboard] = useState<{
     ids: string[];
@@ -39,7 +41,55 @@ export default function TrashMain() {
     fetchTrash();
   }, [fetchTrash]);
 
+  // Clear selection when documents change
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [documents.length]);
+
   // Trash actions
+  const handleRestoreSelected = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setLoading(true);
+      await Promise.all(
+        Array.from(selectedIds).map((id) =>
+          axios.post(`${API_BASE}/documents/${id}/restore`),
+        ),
+      );
+      toast.success(`Restored ${selectedIds.size} documents`);
+      setSelectedIds(new Set());
+      fetchTrash();
+    } catch (err) {
+      console.error("Error restoring selected:", err);
+      toast.error("Failed to restore selected items");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestoreAll = async () => {
+    if (
+      !confirm(
+        `Are you sure you want to restore all ${documents.length} items from the Trash?`,
+      )
+    )
+      return;
+    try {
+      setLoading(true);
+      await Promise.all(
+        documents.map((doc) =>
+          axios.post(`${API_BASE}/documents/${doc.id}/restore`),
+        ),
+      );
+      toast.success(`Restored ${documents.length} documents`);
+      fetchTrash();
+    } catch (err) {
+      console.error("Error restoring all:", err);
+      toast.error("Failed to restore all items");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEmptyTrash = async () => {
     if (
@@ -66,13 +116,33 @@ export default function TrashMain() {
       title="Trash Bin"
       actions={
         documents.length > 0 && (
-          <button
-            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
-            onClick={handleEmptyTrash}
-            disabled={loading}
-          >
-            Empty Trash
-          </button>
+          <div className="flex items-center gap-3">
+            {selectedIds.size > 0 && (
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-blue-700"
+                onClick={handleRestoreSelected}
+                disabled={loading}
+              >
+                <RefreshCcw size={16} />
+                Restore Selected ({selectedIds.size})
+              </button>
+            )}
+            <button
+              className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all hover:bg-emerald-700"
+              onClick={handleRestoreAll}
+              disabled={loading}
+            >
+              <RefreshCcw size={16} />
+              Restore All
+            </button>
+            <button
+              className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
+              onClick={handleEmptyTrash}
+              disabled={loading}
+            >
+              Empty Trash
+            </button>
+          </div>
         )
       }
     >
@@ -100,6 +170,8 @@ export default function TrashMain() {
           }}
           isTrash={true}
           animationsEnabled={true} // Defaults
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
         />
       </div>
     </Page>

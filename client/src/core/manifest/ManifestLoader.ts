@@ -1,5 +1,4 @@
-import { FeatureManifest } from "./types";
-import { viewRegistry } from "@/core/registry/ViewRegistry";
+import type { FeatureManifest } from "./types";
 
 class ManifestLoader {
   private manifests: Map<string, FeatureManifest> = new Map();
@@ -47,8 +46,34 @@ class ManifestLoader {
     return this.loadOrder.map((name) => this.manifests.get(name)!);
   }
 
-  getNavItems() {
-    const allItems: any[] = [];
+  getNavItems(): Array<{
+    id: string;
+    label: string;
+    icon?: string;
+    section?: string;
+    order?: number;
+    action?: {
+      type: string;
+      model?: string;
+      viewType?: string;
+      url?: string;
+    };
+    module: string;
+  }> {
+    const allItems: Array<{
+      id: string;
+      label: string;
+      icon?: string;
+      section?: string;
+      order?: number;
+      action?: {
+        type: string;
+        model?: string;
+        viewType?: string;
+        url?: string;
+      };
+      module: string;
+    }> = [];
     for (const manifest of this.manifests.values()) {
       if (manifest.navItems) {
         allItems.push(
