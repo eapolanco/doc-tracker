@@ -471,15 +471,15 @@ app.put("/api/documents/:id/rename", async (req, res) => {
     }
 
     // Update DB
-    await db.transaction(async (tx) => {
-      await tx
-        .update(documents)
+    db.transaction((tx) => {
+      tx.update(documents)
         .set({
           name: name,
           path: newRelativePath,
           lastModified: new Date(),
         })
-        .where(eq(documents.id, id));
+        .where(eq(documents.id, id))
+        .run();
 
       if (doc.type === "folder") {
         // Update all items inside this folder
@@ -488,16 +488,16 @@ app.put("/api/documents/:id/rename", async (req, res) => {
 
         // We can use a raw SQL update for efficiency with prefixes or a find + loop
         // Let's use raw SQL to replace the prefix in the path
-        await tx.run(
+        tx.run(
           sql`UPDATE documents SET path = ${newPrefix} || SUBSTR(path, ${oldPrefix.length + 1}) WHERE path LIKE ${oldPrefix + "%"}`,
         );
 
         // Also update the category if needed? The system seems to use base folder name as category.
         // Let's update category for immediate children if they match the old folder name.
-        await tx
-          .update(documents)
+        tx.update(documents)
           .set({ category: name })
-          .where(eq(documents.category, doc.name));
+          .where(eq(documents.category, doc.name))
+          .run();
       }
     });
 
@@ -606,26 +606,26 @@ app.post("/api/documents/bulk-delete", async (req, res) => {
       }
     }
 
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       // Delete real IDs
       if (realIds.length > 0) {
-        await tx
-          .update(documents)
+        tx.update(documents)
           .set({ deleted: true })
-          .where(inArray(documents.id, realIds));
+          .where(inArray(documents.id, realIds))
+          .run();
       }
 
       // Delete items inside folder paths
       for (const folderPath of folderPaths) {
-        await tx
-          .update(documents)
+        tx.update(documents)
           .set({ deleted: true })
           .where(
             or(
               like(documents.path, `${folderPath}/%`),
               eq(documents.path, folderPath),
             ),
-          );
+          )
+          .run();
       }
     });
 
@@ -648,22 +648,22 @@ app.post("/api/documents/:id/restore", async (req, res) => {
       return res.status(404).json({ error: "Document not found" });
     }
 
-    await db.transaction(async (tx) => {
-      await tx
-        .update(documents)
+    db.transaction((tx) => {
+      tx.update(documents)
         .set({ deleted: false })
-        .where(eq(documents.id, id));
+        .where(eq(documents.id, id))
+        .run();
 
       if (doc.type === "folder") {
-        await tx
-          .update(documents)
+        tx.update(documents)
           .set({ deleted: false })
           .where(
             or(
               like(documents.path, `${doc.path}/%`),
               eq(documents.path, doc.path),
             ),
-          );
+          )
+          .run();
       }
     });
 
@@ -860,28 +860,32 @@ app.delete("/api/documents/:id/permanent", async (req, res) => {
     }
 
     // Delete from DB (Hard delete)
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       if (doc.type === "folder") {
         // Find all children IDs to clean history
-        const children = await tx.query.documents.findMany({
-          where: or(
-            like(documents.path, `${doc.path}/%`),
-            eq(documents.path, doc.path),
-          ),
-        });
-        const childIds = children.map((c) => c.id);
+        const children = tx
+          .select()
+          .from(documents)
+          .where(
+            or(
+              like(documents.path, `${doc.path}/%`),
+              eq(documents.path, doc.path),
+            ),
+          )
+          .all();
+        const childIds = children.map((c: any) => c.id);
 
         if (childIds.length > 0) {
-          await tx
-            .delete(documentHistory)
-            .where(inArray(documentHistory.documentId, childIds));
-          await tx.delete(documents).where(inArray(documents.id, childIds));
+          tx.delete(documentHistory)
+            .where(inArray(documentHistory.documentId, childIds))
+            .run();
+          tx.delete(documents).where(inArray(documents.id, childIds)).run();
         }
       } else {
-        await tx
-          .delete(documentHistory)
-          .where(eq(documentHistory.documentId, id));
-        await tx.delete(documents).where(eq(documents.id, id));
+        tx.delete(documentHistory)
+          .where(eq(documentHistory.documentId, id))
+          .run();
+        tx.delete(documents).where(eq(documents.id, id)).run();
       }
     });
 
