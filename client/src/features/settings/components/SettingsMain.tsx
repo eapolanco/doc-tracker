@@ -2,49 +2,44 @@ import { useRef, useState, useEffect } from "react";
 import { Cloud, Shield, Check, Edit2 } from "lucide-react";
 import type { CloudAccount, AppSettings } from "@/types";
 import axios from "axios";
-import { toast } from "sonner"; // Assuming context provides this or import directly if available
+import { toast } from "sonner";
 import Page from "@/components/Page";
+import { useSettingsStore } from "@/store/settingsStore";
 
 const API_BASE = "/api";
 
 export default function SettingsMain() {
   const [accounts, setAccounts] = useState<CloudAccount[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const { appSettings, updateSettings } = useSettingsStore();
   const [loading, setLoading] = useState(true);
 
-  // Load data
+  // Load accounts
   useEffect(() => {
-    fetchSettingsData();
+    const fetchAccounts = async () => {
+      try {
+        setLoading(true);
+        const res = await axios.get(`${API_BASE}/accounts`);
+        setAccounts(res.data);
+      } catch (err) {
+        console.error("Error fetching accounts:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAccounts();
   }, []);
-
-  const fetchSettingsData = async () => {
-    try {
-      setLoading(true);
-      const [accRes, setRes] = await Promise.all([
-        axios.get(`${API_BASE}/accounts`),
-        axios.get(`${API_BASE}/settings`),
-      ]);
-      setAccounts(accRes.data);
-      setAppSettings(setRes.data);
-    } catch (err) {
-      console.error("Error fetching settings:", err);
-      // Using alert/console fallback if toast not available in this context,
-      // but App likely has Toaster.
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSaveSettings = async (newSettings: AppSettings) => {
     if (!appSettings) return;
     try {
-      setAppSettings(newSettings); // Optimistic
+      updateSettings(newSettings); // Optimistic store update
       await axios.post(`${API_BASE}/settings`, newSettings);
       toast.success("Settings saved");
     } catch (err) {
       console.error("Failed to save settings:", err);
       toast.error("Failed to save settings");
-      fetchSettingsData(); // Revert
+      // Optionally re-fetch to revert to server state
+      useSettingsStore.getState().fetchSettings();
     }
   };
 

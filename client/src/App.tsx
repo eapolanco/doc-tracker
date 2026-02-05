@@ -1,69 +1,26 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { LayoutGroup, MotionConfig } from "framer-motion";
-import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "sonner";
-import type { AppSettings } from "@/types";
 import { manifestLoader } from "@/core/manifest/ManifestLoader";
 import ViewRenderer from "@/components/views/ViewRenderer";
-import type { ViewType } from "@/core/registry/ViewRegistry";
 import { eventBus } from "@/core/services/EventBus";
-
-const API_BASE = "/api";
+import { useSettingsStore } from "@/store/settingsStore";
+import { useUIStore } from "@/store/uiStore";
 
 function App() {
-  const getInitialState = () => {
-    const params = new URLSearchParams(window.location.search);
-    const viewIdParam = params.get("viewid");
+  const { appSettings, fetchSettings } = useSettingsStore();
+  const { activeTab, model, viewType, navigate } = useUIStore();
 
-    // Default to document management
-    const state = {
-      activeTab: "docs_all",
-      model: "document",
-      viewType: "main" as ViewType,
-    };
-
-    if (viewIdParam) {
-      if (["local", "onedrive", "google", "all"].includes(viewIdParam)) {
-        return { ...state, activeTab: `docs_${viewIdParam}` };
-      }
-
-      // Try to find a nav item that matches this viewid
-      const navItems = manifestLoader.getNavItems();
-      const match = navItems.find((item) => item.id === viewIdParam);
-      if (match && match.action?.type === "view") {
-        return {
-          activeTab: match.id,
-          model: match.action.model || "document",
-          viewType: (match.action.viewType as ViewType) || "main",
-        };
-      }
-    }
-
-    return state;
-  };
-
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [{ activeTab, model, viewType }, setViewState] =
-    useState(getInitialState);
-
-  // Event Bus Listener for Navigation
+  // Event Bus Listener for Navigation (Bridge until all components use the store)
   useEffect(() => {
     const handleNavigation = (featureId: string) => {
-      const navItems = manifestLoader.getNavItems();
-      const match = navItems.find((item) => item.id === featureId);
-      if (match && match.action?.type === "view") {
-        setViewState({
-          activeTab: match.id,
-          model: match.action.model || "document",
-          viewType: (match.action.viewType as ViewType) || "main",
-        });
-      }
+      navigate(featureId);
     };
 
     eventBus.on("navigation:feature", handleNavigation);
     return () => eventBus.off("navigation:feature", handleNavigation);
-  }, []);
+  }, [navigate]);
 
   // Update URL Parameters when state changes
   useEffect(() => {
@@ -113,35 +70,10 @@ function App() {
   }, [appSettings?.app?.name]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      try {
-        const res = await axios.get(`${API_BASE}/settings`);
-        setAppSettings(res.data);
-      } catch (err) {
-        console.error("Error fetching settings:", err);
-      }
-    };
     fetchSettings();
-  }, []);
+  }, [fetchSettings]);
 
   const navItems = useMemo(() => manifestLoader.getNavItems(), []);
-
-  const handleSetTab = (tabId: string) => {
-    const match = navItems.find((item) => item.id === tabId);
-    if (match && match.action?.type === "view") {
-      setViewState({
-        activeTab: match.id,
-        model: match.action.model || "document",
-        viewType: (match.action.viewType as ViewType) || "main",
-      });
-    } else {
-      // Fallback for string-based tabs if needed
-      if (tabId === "settings") {
-        const settingsNav = navItems.find((i) => i.id === "settings_main");
-        if (settingsNav) handleSetTab(settingsNav.id);
-      }
-    }
-  };
 
   return (
     <MotionConfig
@@ -151,11 +83,7 @@ function App() {
     >
       <div className="flex h-screen w-full overflow-hidden bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
         <Toaster position="top-right" richColors closeButton />
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={handleSetTab}
-          navItems={navItems}
-        />
+        <Sidebar navItems={navItems} />
 
         <main className="flex-1 overflow-hidden flex flex-col">
           <LayoutGroup>

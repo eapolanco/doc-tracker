@@ -9,10 +9,9 @@ import {
 } from "lucide-react";
 import { version } from "../../package.json";
 import type { NavItemDefinition } from "@/core/manifest/types";
+import { useUIStore } from "@/store/uiStore";
 
 interface SidebarProps {
-  activeTab: string;
-  setActiveTab: (tab: string) => void;
   navItems: NavItemDefinition[];
 }
 
@@ -25,16 +24,14 @@ const IconMap: Record<string, React.ReactNode> = {
   Trash2: <Trash2 size={18} />,
 };
 
-export default function Sidebar({
-  activeTab,
-  setActiveTab,
-  navItems,
-}: SidebarProps) {
+export default function Sidebar({ navItems }: SidebarProps) {
+  const { activeTab, navigate } = useUIStore();
+
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col dark:bg-slate-900 dark:border-slate-800">
       <div
         className="p-6 border-b border-gray-200 dark:border-slate-800 flex items-center gap-3 cursor-pointer"
-        onClick={() => setActiveTab("docs_all")}
+        onClick={() => navigate("docs_all")}
       >
         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 dark:shadow-blue-900/40">
           <Layout size={20} />
@@ -84,7 +81,7 @@ export default function Sidebar({
                           ? "bg-blue-600 text-white shadow-md shadow-blue-600/20"
                           : "text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
                       }`}
-                      onClick={() => setActiveTab(item.id)}
+                      onClick={() => navigate(item.id)}
                     >
                       {item.icon && IconMap[item.icon] ? (
                         <span className="shrink-0">{IconMap[item.icon]}</span>

@@ -16,7 +16,7 @@ import {
   Cloud,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Document, AppSettings, FileSystemItem } from "@/types";
+import type { Document, FileSystemItem } from "@/types";
 import { eventBus } from "@/core/services/EventBus";
 import Page from "@/components/Page";
 import LayoutSwitcher from "@/components/LayoutSwitcher";
@@ -24,23 +24,33 @@ import { useViewOptions } from "@/hooks/useViewOptions";
 import Button from "@/components/Button";
 import { documentController } from "../controllers/DocumentController";
 import { DocumentModel } from "../models/DocumentModel";
+import { useSettingsStore } from "@/store/settingsStore";
+import { useUIStore } from "@/store/uiStore";
+import { useDocumentStore } from "@/store/documentStore";
 
 export default function DocumentList() {
+  const { appSettings } = useSettingsStore();
+  const {
+    sourceFilter,
+    setSourceFilter,
+    currentPath,
+    setCurrentPath,
+    searchQuery,
+    setSearchQuery,
+    documentViewType: viewType,
+    setDocumentViewType: setViewType,
+  } = useUIStore();
+
+  const { selectedDoc, setSelectedDoc, clipboard, setClipboard } =
+    useDocumentStore();
+
   const [documents, setDocuments] = useState<DocumentModel[]>([]);
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<DocumentModel | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
-  const { viewType, setViewType, sortField, sortOrder, handleSort } =
-    useViewOptions("grid");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPath, setCurrentPath] = useState("");
-  const [clipboard, setClipboard] = useState<{
-    ids: string[];
-    type: "copy" | "move";
-  } | null>(null);
+
+  // Keep sorting local to this view as it's purely UI-level sorting for this list
+  const { sortField, sortOrder, handleSort } = useViewOptions(viewType);
   const [dragOver, setDragOver] = useState(false);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
@@ -50,52 +60,17 @@ export default function DocumentList() {
     fileName: string;
   } | null>(null);
 
-  // Initialize from URL
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const viewIdParam = params.get("viewid");
-    const idParam = params.get("id");
-    const viewTypeParam = params.get("view");
-
-    if (viewIdParam && ["local", "onedrive", "google"].includes(viewIdParam)) {
-      setSourceFilter(viewIdParam);
-    } else {
-      setSourceFilter(null);
-    }
-
-    if (
-      viewTypeParam === "grid" ||
-      viewTypeParam === "list" ||
-      viewTypeParam === "compact"
-    ) {
-      setViewType(viewTypeParam as "grid" | "list" | "compact");
-    }
-
-    if (idParam) {
-      const decodedId = decodeURIComponent(idParam);
-      if (decodedId.includes("/") || decodedId.startsWith("/")) {
-        setCurrentPath(
-          decodedId.startsWith("/") ? decodedId.substring(1) : decodedId,
-        );
-      }
-    }
-  }, [setViewType]);
-
-  // Listen for filter events from Sidebar
+  // Listen for filter events from Sidebar (Legacy bridge)
   useEffect(() => {
     const handleFilter = (source: string | null) => {
       setSourceFilter(source);
-      setCurrentPath(""); // Reset path when switching sources
     };
 
     eventBus.on("docs:filter", handleFilter);
     return () => {
-      // Assuming eventBus has an 'off' method for cleanup
-      if (typeof eventBus.off === "function") {
-        eventBus.off("docs:filter", handleFilter);
-      }
+      eventBus.off("docs:filter", handleFilter);
     };
-  }, []);
+  }, [setSourceFilter]);
 
   // Update URL
   useEffect(() => {
@@ -105,7 +80,6 @@ export default function DocumentList() {
 
     params.set("view", viewType);
 
-    // Use .data.id if selectedDoc is a model, or just check compatibility
     if (selectedDoc) {
       params.set("id", selectedDoc.id);
     } else if (currentPath) {
@@ -121,10 +95,8 @@ export default function DocumentList() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const { documents: docs, settings } = await documentController.search();
-      console.log(`DocumentList: Fetched ${docs.length} documents`);
+      const { documents: docs } = await documentController.search();
       setDocuments(docs);
-      setAppSettings(settings);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("DocumentList: Error fetching data:", msg);
@@ -281,9 +253,6 @@ export default function DocumentList() {
 
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-      // Cast doc to any or check properties because filteredBySource contains DocumentModels
-      // and we return them as FileSystemItems (which requires Document interface compliance)
-      // Since DocumentModel has getters matching Document, it should work for reads.
       return filteredBySource
         .filter(
           (doc) =>
@@ -291,7 +260,7 @@ export default function DocumentList() {
             doc.category.toLowerCase().includes(searchLower) ||
             doc.path.toLowerCase().includes(searchLower),
         )
-        .map((d) => d.data as unknown as Document); // Use underlying data to be safe for types
+        .map((d) => d.data as unknown as Document);
     }
 
     const visibleItems = filteredBySource.filter((doc) => {
@@ -314,7 +283,6 @@ export default function DocumentList() {
       if (currentPath === "" && doc.path.includes("/")) {
         const folderName = doc.path.split("/")[0];
         if (!itemsMap.has(folderName)) {
-          // Implicit folder creation
           itemsMap.set(folderName, {
             id: `folder-implicit-${folderName}`,
             name: folderName,
@@ -521,17 +489,9 @@ export default function DocumentList() {
                     if (item.type === "folder") {
                       setCurrentPath(item.path);
                     } else {
-                      // We need the model for selectedDoc stat, but we have the item (data).
-                      // Ideally we find the model.
                       const model = documents.find((d) => d.id === item.id);
                       if (model) setSelectedDoc(model);
                       else {
-                        // Fallback if not found or item is constructed
-                        // But for documents, they should exist.
-                        // Construct temporary model or handle this?
-                        // DocumentsGrid returns FileSystemItem.
-                        // item is Document.
-                        // I can re-wrap it.
                         setSelectedDoc(new DocumentModel(item as Document));
                       }
                     }
