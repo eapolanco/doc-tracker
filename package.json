@@ -1,5 +1,6 @@
 {
   "name": "doc-tracker-ecosystem",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "install:all": "npm install && cd backend && npm install && cd ../client && npm install",
@@ -7,7 +8,7 @@
     "dev:frontend": "cd client && npm run dev",
     "build:all": "cd client && npm run build && cd ../backend && npm run build",
     "start": "cd backend && node dist/index.js",
-    "release": "standard-version"
+    "release": "npx standard-version"
   },
   "devDependencies": {
     "standard-version": "^9.5.0"
