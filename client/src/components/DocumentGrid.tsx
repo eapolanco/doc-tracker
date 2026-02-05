@@ -749,6 +749,8 @@ export default function DocumentGrid({
       {documents.map((doc) => {
         const { icon: Icon, color, bg } = getFileIcon(doc);
         const isSelected = selectedIds.has(doc.id);
+        const isFolder = doc.type === "folder";
+
         return (
           <div
             key={doc.id}
@@ -757,13 +759,13 @@ export default function DocumentGrid({
             onDragOver={(e) => handleDragOver(e, doc.id, doc.type === "folder")}
             onDragLeave={() => setDropTargetId(null)}
             onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
-            className={`group rounded-xl border p-6 flex flex-col gap-4 cursor-pointer transition-all duration-200 relative
+            className={`group rounded-2xl border p-5 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative overflow-hidden
               ${
                 isSelected
-                  ? "bg-blue-50/50 border-blue-500/50 shadow-lg"
+                  ? "bg-blue-50/80 border-blue-500/50 shadow-md ring-1 ring-blue-500/20"
                   : dropTargetId === doc.id
-                    ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02]"
-                    : "bg-white border-gray-200 hover:shadow-lg hover:border-blue-500/30"
+                    ? "bg-amber-50 border-amber-500 shadow-lg scale-[1.02]"
+                    : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-xl hover:-translate-y-1"
               } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
             style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
             onClick={() => {
@@ -776,54 +778,80 @@ export default function DocumentGrid({
               }
             }}
           >
-            <div className="flex justify-between items-start mb-auto relative">
-              <div className="flex items-start gap-3">
-                <div className="pt-1" onClick={(e) => toggleSelect(e, doc.id)}>
+            {/* Selection Overlay Background when Selected */}
+            {isSelected && (
+              <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
+            )}
+
+            <div className="flex justify-between items-start mb-auto relative z-10">
+              <div className="flex items-start gap-4 w-full">
+                <div className="pt-1 " onClick={(e) => toggleSelect(e, doc.id)}>
+                  <div
+                    className={`w-5 h-5 rounded-md border transition-all duration-200 flex items-center justify-center
+                    ${isSelected ? "bg-blue-500 border-blue-500" : "border-gray-300 bg-white group-hover:border-blue-400 opacity-0 group-hover:opacity-100"}
+                   `}
+                  >
+                    {isSelected && <Check size={12} className="text-white" />}
+                  </div>
+                  {/* Hidden actual checkbox for accessibility if needed, but the div above acts as visual */}
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ opacity: isSelected ? 1 : undefined }}
+                    className="hidden"
                     checked={isSelected}
                     onChange={() => {}}
                   />
                 </div>
+
                 <div
-                  className={`w-12 h-12 ${bg} rounded-lg flex items-center justify-center ${color} relative`}
+                  className={`w-14 h-14 ${bg} rounded-2xl flex items-center justify-center ${color} relative shadow-sm transition-transform duration-300 group-hover:scale-105`}
                 >
                   {(doc as Document).status === "corrupted" && (
-                    <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white">
+                    <div className="absolute -top-1 -right-1 bg-red-500 rounded-full p-0.5 border-2 border-white shadow-sm z-20">
                       <AlertTriangle size={10} className="text-white" />
                     </div>
                   )}
-                  <Icon size={20} />
+                  <Icon size={24} strokeWidth={1.5} />
                 </div>
+
+                <div className="ml-auto">{renderActionsMenu(doc)}</div>
               </div>
-              {renderActionsMenu(doc)}
             </div>
 
-            <div className="flex-1 flex flex-col gap-4">
+            <div className="flex-1 flex flex-col gap-3 relative z-10">
               {renamingId === doc.id ? (
                 renderRenameInput(doc as Document)
               ) : (
-                <div
-                  className="text-base font-semibold text-gray-900 truncate"
-                  title={doc.name}
-                >
-                  {doc.name}
+                <div className="flex flex-col gap-0.5">
+                  <div
+                    className="text-[15px] font-semibold text-gray-900 truncate leading-snug group-hover:text-blue-600 transition-colors"
+                    title={doc.name}
+                  >
+                    {doc.name}
+                  </div>
+                  <div className="text-[11px] text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="truncate max-w-[100px]">
+                      {doc.category || "Uncategorized"}
+                    </span>
+                    {doc.cloudSource && (
+                      <>
+                        <span className="w-1 h-1 rounded-full bg-gray-300" />
+                        <span className="capitalize">{doc.cloudSource}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div className="flex flex-col gap-2 text-xs text-gray-500">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 w-fit">
-                  {doc.category}
-                </span>
-                <span className="mt-2 text-[10px]">
-                  Modified {format(new Date(doc.lastModified), "MMM d, yyyy")}
-                </span>
-                <span className="flex items-center gap-1 capitalize">
-                  <ExternalLink size={12} />
-                  {doc.cloudSource}
-                </span>
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100/60 mt-auto">
+                <div className="text-[11px] text-gray-400 font-medium">
+                  {format(new Date(doc.lastModified), "MMM d, yyyy")}
+                </div>
+
+                {isFolder && (
+                  <div className="text-[10px] bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">
+                    Folder
+                  </div>
+                )}
               </div>
             </div>
           </div>

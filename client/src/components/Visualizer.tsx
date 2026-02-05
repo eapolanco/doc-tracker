@@ -11,10 +11,14 @@ interface Props {
 
 const API_BASE = "/api";
 
+type SheetCell = string | number | boolean | null;
+type SheetRow = SheetCell[];
+type SheetData = SheetRow[];
+
 export default function Visualizer({ document, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [content, setContent] = useState<any>(null);
+  const [content, setContent] = useState<string | SheetData | null>(null);
   const [type, setType] = useState<string>("");
   const docxRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +57,12 @@ export default function Visualizer({ document, onClose }: Props) {
               try {
                 // Clear previous content
                 docxRef.current.innerHTML = "";
-                await docx.renderAsync(blob, docxRef.current, undefined, options);
+                await docx.renderAsync(
+                  blob,
+                  docxRef.current,
+                  undefined,
+                  options,
+                );
               } catch (e) {
                 console.error("DOCX Render error:", e);
                 setError("Failed to render DOCX file.");
@@ -67,7 +76,9 @@ export default function Visualizer({ document, onClose }: Props) {
           const wb = XLSX.read(ab);
           const firstSheetName = wb.SheetNames[0];
           const worksheet = wb.Sheets[firstSheetName];
-          const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          const data = XLSX.utils.sheet_to_json(worksheet, {
+            header: 1,
+          }) as SheetData;
           setContent(data);
         }
         setLoading(false);
@@ -125,15 +136,20 @@ export default function Visualizer({ document, onClose }: Props) {
           <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
             <table className="w-full border-collapse text-sm">
               <tbody>
-                {Array.isArray(content) && content.map((row: any, i: number) => (
-                  <tr key={i}>
-                    {Array.isArray(row) && row.map((cell: any, j: number) => (
-                      <td key={j} className="border border-gray-200 p-2 whitespace-nowrap">
-                        {cell}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {Array.isArray(content) &&
+                  content.map((row: SheetRow, i: number) => (
+                    <tr key={i}>
+                      {Array.isArray(row) &&
+                        row.map((cell: SheetCell, j: number) => (
+                          <td
+                            key={j}
+                            className="border border-gray-200 p-2 whitespace-nowrap"
+                          >
+                            {cell}
+                          </td>
+                        ))}
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
@@ -145,8 +161,13 @@ export default function Visualizer({ document, onClose }: Props) {
             <p className="text-gray-500 mb-6 font-normal">
               Preview not available for <b>.{type}</b>
             </p>
-            <a href={fileUrl} download className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90">
-              <Download size={16} className="mr-2" /> Download {type.toUpperCase()} File
+            <a
+              href={fileUrl}
+              download
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90"
+            >
+              <Download size={16} className="mr-2" /> Download{" "}
+              {type.toUpperCase()} File
             </a>
           </div>
         );
@@ -157,23 +178,37 @@ export default function Visualizer({ document, onClose }: Props) {
     <>
       <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white z-20 sticky top-0">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center text-blue-600 flex-shrink-0">
+          <div className="w-8 h-8 bg-gray-100 rounded-md flex items-center justify-center text-blue-600 shrink-0">
             <FileText size={18} />
           </div>
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold truncate" title={document.name}>
+            <h2
+              className="text-sm font-semibold truncate"
+              title={document.name}
+            >
               {document.name}
             </h2>
             <p className="text-xs text-gray-500">
-              {document.category} • {(document.cloudSource || 'local').toUpperCase()}
+              {document.category} •{" "}
+              {(document.cloudSource || "local").toUpperCase()}
             </p>
           </div>
         </div>
         <div className="flex gap-1">
-          <a href={fileUrl} target="_blank" rel="noreferrer" className="p-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center" title="Open in new tab">
+          <a
+            href={fileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="p-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center"
+            title="Open in new tab"
+          >
             <ExternalLink size={16} />
           </a>
-          <button onClick={onClose} className="p-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center" title="Close Preview">
+          <button
+            onClick={onClose}
+            className="p-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-center"
+            title="Close Preview"
+          >
             <X size={18} />
           </button>
         </div>
@@ -182,15 +217,17 @@ export default function Visualizer({ document, onClose }: Props) {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-[300px]">
             <div className="w-4 h-4 border-2 border-gray-900 border-t-transparent rounded-full animate-spin inline-block" />
-            <p className="mt-4 text-gray-500 text-sm">
-              Preparing preview...
-            </p>
+            <p className="mt-4 text-gray-500 text-sm">Preparing preview...</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-[300px] text-center p-4">
             <FileText size={40} className="text-blue-600 opacity-20 mb-4" />
             <p className="text-blue-600 mb-4">{error}</p>
-            <a href={fileUrl} download className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90">
+            <a
+              href={fileUrl}
+              download
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90"
+            >
               <Download size={16} className="mr-2" /> Download File
             </a>
           </div>

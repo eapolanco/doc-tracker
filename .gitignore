@@ -18,6 +18,8 @@ backend/.env
 # Databases
 *.db
 backend/*.db
+backend/*.db-shm
+backend/*.db-wal
 
 # Logs
 logs
