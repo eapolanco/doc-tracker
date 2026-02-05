@@ -1,16 +1,17 @@
 import { useEffect, useMemo } from "react";
 import { LayoutGroup, MotionConfig } from "framer-motion";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import Sidebar from "@/components/Sidebar";
 import { Toaster } from "sonner";
 import { manifestLoader } from "@/core/manifest/ManifestLoader";
 import ViewRenderer from "@/components/views/ViewRenderer";
 import { eventBus } from "@/core/services/EventBus";
 import { useSettingsStore } from "@/store/settingsStore";
 import { useUIStore } from "@/store/uiStore";
+import { DashboardShell } from "@/components/layout";
+import { Breadcrumbs } from "@/components/layout";
 
 function App() {
-  const { appSettings } = useSettingsStore(); // fetchSettings removed, handled by React Query in components or here
+  const { appSettings } = useSettingsStore();
   const { activeTab, model, viewType, navigate } = useUIStore();
   const location = useLocation();
 
@@ -51,34 +52,25 @@ function App() {
         appSettings?.app?.animationsEnabled ? undefined : { duration: 0 }
       }
     >
-      <div className="flex h-screen w-full overflow-hidden bg-gray-50 text-gray-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
-        <Toaster position="top-right" richColors closeButton />
-        <Sidebar navItems={navItems} />
-
-        <main className="flex-1 overflow-hidden flex flex-col">
-          <LayoutGroup>
-            <div className="flex flex-1 overflow-hidden relative">
-              <Routes>
-                <Route
-                  path="/"
-                  element={<Navigate to="/app?viewid=docs_all" replace />}
-                />
-                <Route
-                  path="/app"
-                  element={
-                    <ViewRenderer
-                      key={activeTab}
-                      model={model}
-                      type={viewType}
-                    />
-                  }
-                />
-                {/* Add more specific routes if needed, but the modular arch loves the dynamic ViewRenderer */}
-              </Routes>
-            </div>
-          </LayoutGroup>
-        </main>
-      </div>
+      <Toaster position="top-right" richColors closeButton />
+      <DashboardShell navItems={navItems} header={<Breadcrumbs />}>
+        <LayoutGroup>
+          <div className="flex flex-1 overflow-hidden relative">
+            <Routes>
+              <Route
+                path="/"
+                element={<Navigate to="/app?viewid=docs_all" replace />}
+              />
+              <Route
+                path="/app"
+                element={
+                  <ViewRenderer key={activeTab} model={model} type={viewType} />
+                }
+              />
+            </Routes>
+          </div>
+        </LayoutGroup>
+      </DashboardShell>
     </MotionConfig>
   );
 }
