@@ -13,19 +13,6 @@ interface Props {
 
 const API_BASE = "/api";
 
-const CATEGORIES = [
-  "Career",
-  "Education",
-  "Finance",
-  "Health",
-  "Housing",
-  "Legal",
-  "Personal",
-  "Projects",
-  "Transportation",
-  "Travel",
-];
-
 export default function UploadModal({
   onClose,
   onUploadComplete,
@@ -33,7 +20,7 @@ export default function UploadModal({
   defaultCategory = "Personal",
 }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState(defaultCategory);
+  const [category] = useState(defaultCategory);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{
@@ -126,7 +113,13 @@ export default function UploadModal({
         <header className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Upload size={20} />
-            <h2 className="text-lg font-semibold">Upload Documents</h2>
+            <div className="flex flex-col">
+              <h2 className="text-lg font-semibold">Upload Documents</h2>
+              <p className="text-xs text-gray-500 font-medium tracking-tight">
+                To:{" "}
+                <span className="text-blue-600">{category || "Personal"}</span>
+              </p>
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -137,22 +130,6 @@ export default function UploadModal({
         </header>
 
         <div className="overflow-y-auto p-6">
-          {/* Category Selection */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-2">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-          </div>
-
           {/* File Upload Area */}
           <div
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 mb-6 ${
@@ -248,15 +225,6 @@ export default function UploadModal({
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-
-          {/* Upload Status */}
-          {uploadStatus.success.length > 0 && (
-            <div className="p-3 bg-green-50 border border-green-500 rounded-lg mb-4">
-              <p className="text-sm text-green-700">
-                ✅ Successfully uploaded {uploadStatus.success.length} file(s)
-              </p>
             </div>
           )}
 
