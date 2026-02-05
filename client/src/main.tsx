@@ -8,8 +8,10 @@ import { appRegistry } from "@/core/registry/FeatureRegistry";
 import { HistoryFeature } from "@/features/history";
 import { SettingsFeature } from "@/features/settings";
 import { TrashFeature } from "@/features/trash";
+import { DocumentsFeature } from "@/features/documents";
 
 // 1. Register Features
+appRegistry.register(DocumentsFeature);
 appRegistry.register(HistoryFeature);
 appRegistry.register(SettingsFeature);
 appRegistry.register(TrashFeature);

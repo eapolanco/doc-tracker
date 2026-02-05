@@ -10,6 +10,7 @@ export interface FeatureNavItem {
   icon?: ReactNode; // Icon component or element
   path?: string; // URL path (for future router)
   order?: number; // Display order in sidebar
+  section?: string; // Grouping header (e.g. "OVERVIEW", "STORAGE")
   onClick?: () => void; // Optional handler if not just a link
 }
 

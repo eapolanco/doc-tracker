@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import HistoryTimeline from "@/components/HistoryTimeline"; // For now, import the shared one
 import type { HistoryItem } from "@/types";
+import Page from "@/components/Page";
 
 const API_BASE = "/api";
 
@@ -29,18 +30,25 @@ export default function HistoryMain() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-gray-500">Loading history...</div>
+      <Page title="History">
+        <div className="p-8 text-center text-gray-500">Loading history...</div>
+      </Page>
     );
   }
 
   if (error) {
-    return <div className="p-8 text-center text-red-500">{error}</div>;
+    return (
+      <Page title="History">
+        <div className="p-8 text-center text-red-500">{error}</div>
+      </Page>
+    );
   }
 
   return (
-    <div className="h-full flex flex-col">
-      {/* Use the existing component, but now it's powered by this feature's own state */}
-      <HistoryTimeline history={history} />
-    </div>
+    <Page title="History">
+      <div className="h-full overflow-y-auto p-8">
+        <HistoryTimeline history={history} />
+      </div>
+    </Page>
   );
 }
