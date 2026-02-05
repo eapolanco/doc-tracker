@@ -782,7 +782,7 @@ function App() {
                 width: selectedDoc ? 450 : 0,
                 opacity: selectedDoc ? 1 : 0,
               }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              transition={{ type: "spring", stiffness: 260, damping: 35 }}
               className="shrink-0 border-l border-gray-200 bg-white flex flex-col z-10 overflow-hidden"
             >
               {selectedDoc && (

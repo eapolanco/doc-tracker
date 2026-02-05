@@ -819,7 +819,7 @@ export default function DocumentGrid({
     <motion.div
       layout
       transition={{
-        layout: { type: "spring", stiffness: 300, damping: 30, mass: 1 },
+        layout: { type: "spring", stiffness: 260, damping: 35, mass: 1 },
       }}
       className="flex flex-wrap gap-6 py-4 relative items-stretch"
     >
@@ -834,17 +834,17 @@ export default function DocumentGrid({
           return (
             <motion.div
               layout
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.98, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 8 }}
               transition={{
                 layout: {
                   type: "spring",
-                  stiffness: 300,
-                  damping: 30,
+                  stiffness: 260,
+                  damping: 35,
                   mass: 1,
                 },
-                opacity: { duration: 0.2 },
+                opacity: { duration: 0.25, ease: "easeOut" },
               }}
               key={doc.id}
               style={{
