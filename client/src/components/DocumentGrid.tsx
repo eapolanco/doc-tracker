@@ -138,6 +138,7 @@ export default function DocumentGrid({
     onConfirm: () => {},
   });
   const menuRef = useRef<HTMLDivElement>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -148,6 +149,14 @@ export default function DocumentGrid({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Update indeterminate state for select all checkbox
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        selectedIds.size > 0 && selectedIds.size < documents.length;
+    }
+  }, [selectedIds, documents]);
 
   // Clear selection when documents length changes
   useEffect(() => {
@@ -169,16 +178,10 @@ export default function DocumentGrid({
   };
 
   const toggleSelectAll = () => {
-    if (
-      selectedIds.size === documents.filter((d) => d.type !== "folder").length
-    ) {
+    if (selectedIds.size === documents.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(
-        new Set(
-          documents.filter((d) => d.type !== "folder").map((doc) => doc.id),
-        ),
-      );
+      setSelectedIds(new Set(documents.map((doc) => doc.id)));
     }
   };
 
@@ -374,7 +377,7 @@ export default function DocumentGrid({
           {activeMenu === doc.id && (
             <div
               ref={menuRef}
-              className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[160px] z-50 flex flex-col p-1"
+              className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-2xl min-w-[180px] z-50 flex flex-col p-1.5"
               onClick={(e) => e.stopPropagation()}
             >
               <div
@@ -418,7 +421,7 @@ export default function DocumentGrid({
         {activeMenu === doc.id && (
           <div
             ref={menuRef}
-            className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[160px] z-50 flex flex-col p-1"
+            className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-2xl min-w-[180px] z-50 flex flex-col p-1.5"
             onClick={(e) => e.stopPropagation()}
           >
             <div
@@ -601,6 +604,7 @@ export default function DocumentGrid({
         <div className="flex items-center px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-100">
           <div className="w-10 flex items-center justify-center">
             <input
+              ref={selectAllRef}
               type="checkbox"
               className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
               checked={
@@ -759,7 +763,7 @@ export default function DocumentGrid({
             onDragOver={(e) => handleDragOver(e, doc.id, doc.type === "folder")}
             onDragLeave={() => setDropTargetId(null)}
             onDrop={(e) => doc.type === "folder" && handleDrop(e, doc.path)}
-            className={`group rounded-2xl border p-5 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative overflow-hidden
+            className={`group rounded-2xl border p-5 flex flex-col gap-4 cursor-pointer transition-all duration-300 relative
               ${
                 isSelected
                   ? "bg-blue-50/80 border-blue-500/50 shadow-md ring-1 ring-blue-500/20"
@@ -783,7 +787,7 @@ export default function DocumentGrid({
               <div className="absolute inset-0 bg-blue-500/5 pointer-events-none" />
             )}
 
-            <div className="flex justify-between items-start mb-auto relative z-10">
+            <div className="flex justify-between items-start mb-auto relative">
               <div className="flex items-start gap-4 w-full">
                 <div className="pt-1 " onClick={(e) => toggleSelect(e, doc.id)}>
                   <div
@@ -817,7 +821,7 @@ export default function DocumentGrid({
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col gap-3 relative z-10">
+            <div className="flex-1 flex flex-col gap-3 relative">
               {renamingId === doc.id ? (
                 renderRenameInput(doc as Document)
               ) : (

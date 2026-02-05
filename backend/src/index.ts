@@ -275,11 +275,34 @@ app.get("/api/documents/:id/view", async (req, res) => {
 
     const fullPath = getAbsolutePath(doc.path);
 
+    // Determine MIME type based on file extension
+    const ext = path.extname(doc.name).toLowerCase();
+    const mimeTypes: Record<string, string> = {
+      ".pdf": "application/pdf",
+      ".doc": "application/msword",
+      ".docx":
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      ".txt": "text/plain",
+      ".md": "text/markdown",
+      ".json": "application/json",
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".xlsx":
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ".xls": "application/vnd.ms-excel",
+      ".pptx":
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    };
+    const mimeType = mimeTypes[ext] || "application/octet-stream";
+
     if (doc.encrypted) {
       try {
         const decipherStream = await getDecipherStream(fullPath);
         // Set headers manually since we are streaming
-        res.setHeader("Content-Type", "application/octet-stream"); // Or try to guess mime type
+        res.setHeader("Content-Type", mimeType);
         res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
         decipherStream.pipe(res);
         decipherStream.on("error", (err) => {
@@ -291,7 +314,19 @@ app.get("/api/documents/:id/view", async (req, res) => {
         res.status(500).json({ error: "Failed to decrypt document" });
       }
     } else {
-      res.sendFile(fullPath);
+      // Set Content-Type and Content-Disposition to inline so files preview instead of download
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
+
+      // Use createReadStream instead of sendFile to ensure headers aren't overridden
+      const fileStream = fsSync.createReadStream(fullPath);
+      fileStream.pipe(res);
+      fileStream.on("error", (err) => {
+        console.error("File stream error:", err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: "Failed to load document" });
+        }
+      });
     }
   } catch (err) {
     res.status(500).json({ error: "Failed to load document" });

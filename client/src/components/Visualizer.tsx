@@ -108,11 +108,35 @@ export default function Visualizer({ document, onClose }: Props) {
         );
       case "pdf":
         return (
-          <iframe
-            src={fileUrl}
-            className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
-            title={document.name}
-          />
+          <div className="w-full h-[calc(100vh-200px)] bg-white rounded-lg">
+            <object
+              data={fileUrl}
+              type="application/pdf"
+              className="w-full h-full rounded-lg"
+              title={document.name}
+            >
+              <embed
+                src={fileUrl}
+                type="application/pdf"
+                className="w-full h-full rounded-lg"
+              />
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <FileText size={48} className="text-gray-400 mb-4" />
+                <p className="text-gray-600 mb-4">
+                  Your browser cannot display PDFs inline.
+                </p>
+                <a
+                  href={fileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-blue-700"
+                >
+                  <ExternalLink size={16} className="mr-2" />
+                  Open PDF in New Tab
+                </a>
+              </div>
+            </object>
+          </div>
         );
       case "txt":
       case "md":

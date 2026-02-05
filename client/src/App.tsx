@@ -171,6 +171,22 @@ function App() {
     console.log("Selected Document:", selectedDoc?.name);
   }, [activeTab, selectedDoc]);
 
+  // Close preview panel when navigating to a different folder
+  useEffect(() => {
+    if (selectedDoc) {
+      setSelectedDoc(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath]);
+
+  // Close preview panel when changing tabs or source filter
+  useEffect(() => {
+    if (selectedDoc) {
+      setSelectedDoc(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, sourceFilter]);
+
   // Apply Theme
   useEffect(() => {
     if (appSettings?.app?.theme === "dark") {
