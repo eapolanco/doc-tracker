@@ -81,9 +81,10 @@ async function updateScanSchedule() {
       const ms = hours * 60 * 60 * 1000;
       console.log(`Setting up auto-scan every ${hours} hours (${ms}ms)`);
 
-      scanInterval = setInterval(() => {
+      scanInterval = setInterval(async () => {
         console.log("Running scheduled scan...");
-        scanDirectory(DOCUMENTS_ROOT);
+        await scanDirectory(DOCUMENTS_ROOT);
+        await verifyDatabaseIntegrity();
       }, ms);
     } else {
       console.log("Auto-scan disabled");
@@ -229,6 +230,11 @@ async function scanDirectory(dir: string, category: string = "General") {
             uploadedAt: new Date(),
             lastModified: folderStats.mtime,
           });
+        } else if (existingFolder.status === "missing") {
+          await db
+            .update(documents)
+            .set({ status: "valid" })
+            .where(eq(documents.id, existingFolder.id));
         }
 
         await scanDirectory(fullPath, entry.name);
@@ -268,7 +274,8 @@ async function scanDirectory(dir: string, category: string = "General") {
             details: "Initial scan discovery",
           });
         } else if (
-          existingDoc.lastModified.getTime() !== stats.mtime.getTime()
+          existingDoc.lastModified.getTime() !== stats.mtime.getTime() ||
+          existingDoc.status === "missing"
         ) {
           // Update if modified
           await db
@@ -291,6 +298,50 @@ async function scanDirectory(dir: string, category: string = "General") {
     }
   } catch (err) {
     console.error(`Error scanning ${dir}:`, err);
+  }
+}
+
+async function verifyDatabaseIntegrity() {
+  console.log("Verifying database integrity (Checking for missing files)...");
+  try {
+    const allDocs = await db.query.documents.findMany({
+      where: eq(documents.deleted, false),
+    });
+
+    let missingCount = 0;
+    let restoredCount = 0;
+
+    for (const doc of allDocs) {
+      // Skip implicit folders if they exist
+      if (doc.type === "folder" && doc.id.startsWith("folder-implicit-"))
+        continue;
+
+      const fullPath = getAbsolutePath(doc.path);
+      try {
+        await fs.access(fullPath);
+        if (doc.status === "missing") {
+          await db
+            .update(documents)
+            .set({ status: "valid" })
+            .where(eq(documents.id, doc.id));
+          restoredCount++;
+        }
+      } catch {
+        if (doc.status !== "missing") {
+          await db
+            .update(documents)
+            .set({ status: "missing" })
+            .where(eq(documents.id, doc.id));
+          missingCount++;
+          console.log(`[Integrity] Marked as MISSING: ${doc.path}`);
+        }
+      }
+    }
+    console.log(
+      `Integrity check complete. Found ${missingCount} missing, restored ${restoredCount}.`,
+    );
+  } catch (err) {
+    console.error("Integrity check failed:", err);
   }
 }
 
@@ -724,19 +775,42 @@ app.get("/api/share/:token", async (req, res) => {
 
     if (doc.encrypted) {
       try {
+        if (!fsSync.existsSync(fullPath)) {
+          console.error(
+            `Public decryption error: File not found at ${fullPath}`,
+          );
+          return res
+            .status(404)
+            .send("Shared document file not found on server");
+        }
+
         const decipherStream = await getDecipherStream(fullPath);
         res.setHeader("Content-Type", mimeType);
         res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
         decipherStream.pipe(res);
         decipherStream.on("error", (err) => {
           console.error("Public decryption stream error:", err);
-          res.end();
+          if (!res.headersSent) {
+            res.status(500).send("Decryption stream error");
+          } else {
+            res.end();
+          }
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error("Public decryption error:", err);
-        res.status(500).send("Failed to decrypt shared document");
+        const isNotFound = err.code === "ENOENT";
+        res
+          .status(isNotFound ? 404 : 500)
+          .send(
+            isNotFound
+              ? "Document file not found"
+              : `Failed to decrypt shared document: ${err.message || "Unknown error"}`,
+          );
       }
     } else {
+      if (!fsSync.existsSync(fullPath)) {
+        return res.status(404).send("Shared document file not found");
+      }
       res.setHeader("Content-Type", mimeType);
       res.setHeader("Content-Disposition", `inline; filename="${doc.name}"`);
 
@@ -1272,7 +1346,8 @@ app.put("/api/documents/:id/tags", async (req, res) => {
 
 app.post("/api/scan", async (req, res) => {
   await scanDirectory(DOCUMENTS_ROOT);
-  res.json({ message: "Scan complete" });
+  await verifyDatabaseIntegrity();
+  res.json({ message: "Scan and integrity check complete" });
 });
 
 const PORT = process.env.PORT || 3001;
@@ -1353,7 +1428,8 @@ async function startServer() {
   // Perform initial scan to populate DB with folders
   console.log("Performing initial scan...");
   await scanDirectory(DOCUMENTS_ROOT);
-  console.log("Initial scan complete.");
+  await verifyDatabaseIntegrity();
+  console.log("Initial scan and integrity check complete.");
 
   await updateScanSchedule();
 
