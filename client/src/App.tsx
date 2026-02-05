@@ -369,6 +369,7 @@ function App() {
     await axios.post(`${API_BASE}/scan`);
     await fetchData();
     setLoading(false);
+    toast.success(`Successfully uploaded ${files.length} documents`);
 
     // Clear progress after a delay
     setTimeout(() => setUploadProgress(null), 3000);
@@ -501,8 +502,24 @@ function App() {
     });
 
     return Array.from(itemsMap.values()).sort((a, b) => {
+      // Folders always first
       if (a.type === "folder" && b.type !== "folder") return -1;
       if (a.type !== "folder" && b.type === "folder") return 1;
+
+      // Then recently uploaded (within 15 minutes)
+      const aIsNew =
+        a.uploadedAt &&
+        new Date().getTime() - new Date(a.uploadedAt).getTime() <
+          1000 * 60 * 15;
+      const bIsNew =
+        b.uploadedAt &&
+        new Date().getTime() - new Date(b.uploadedAt).getTime() <
+          1000 * 60 * 15;
+
+      if (aIsNew && !bIsNew) return -1;
+      if (!aIsNew && bIsNew) return 1;
+
+      // Default sort by name
       return a.name.localeCompare(b.name);
     });
   };

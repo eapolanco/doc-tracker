@@ -117,6 +117,22 @@ const formatFileSize = (bytes?: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
+const isRecentlyUploaded = (uploadedAt?: string) => {
+  if (!uploadedAt) return false;
+  const now = new Date();
+  const uploaded = new Date(uploadedAt);
+  const diffInMinutes = (now.getTime() - uploaded.getTime()) / (1000 * 60);
+  return diffInMinutes < 15; // Within 15 minutes
+};
+
+const shouldPulse = (uploadedAt?: string) => {
+  if (!uploadedAt) return false;
+  const now = new Date();
+  const uploaded = new Date(uploadedAt);
+  const diffInMinutes = (now.getTime() - uploaded.getTime()) / (1000 * 60);
+  return diffInMinutes < 1; // Within 1 minute
+};
+
 export default function DocumentGrid({
   documents,
   onPreview,
@@ -675,6 +691,8 @@ export default function DocumentGrid({
         {documents.map((doc) => {
           const { icon: Icon, color, bg } = getFileIcon(doc);
           const isSelected = selectedIds.has(doc.id);
+          const isNew = isRecentlyUploaded(doc.uploadedAt);
+
           return (
             <div
               key={doc.id}
@@ -738,6 +756,11 @@ export default function DocumentGrid({
                       title={doc.name}
                     >
                       {doc.name}
+                      {isNew && (
+                        <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold bg-blue-600 text-white animate-in zoom-in-50 duration-300">
+                          NEW
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -797,6 +820,8 @@ export default function DocumentGrid({
         const { icon: Icon, color, bg } = getFileIcon(doc);
         const isSelected = selectedIds.has(doc.id);
         const isFolder = doc.type === "folder";
+        const isNew = isRecentlyUploaded(doc.uploadedAt);
+        const isPulsing = shouldPulse(doc.uploadedAt);
 
         return (
           <div
@@ -813,7 +838,7 @@ export default function DocumentGrid({
                   : dropTargetId === doc.id
                     ? "bg-amber-50 border-amber-500 shadow-lg scale-[1.02]"
                     : "bg-white border-gray-100 hover:border-gray-200 hover:shadow-xl hover:-translate-y-1"
-              } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
+              } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${isPulsing ? "animate-pulse-blue border-blue-400 ring-2 ring-blue-500/10" : ""}`}
             style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
             onClick={() => {
               if (renamingId !== doc.id) {
@@ -870,10 +895,15 @@ export default function DocumentGrid({
               ) : (
                 <div className="flex flex-col gap-0.5">
                   <div
-                    className="text-[15px] font-semibold text-gray-900 truncate leading-snug group-hover:text-blue-600 transition-colors"
+                    className="text-[15px] font-semibold text-gray-900 truncate leading-snug group-hover:text-blue-600 transition-colors flex items-center gap-2"
                     title={doc.name}
                   >
-                    {doc.name}
+                    <span className="truncate">{doc.name}</span>
+                    {isNew && (
+                      <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold bg-blue-600 text-white animate-in zoom-in-50 duration-300 shadow-sm shadow-blue-500/20">
+                        NEW
+                      </span>
+                    )}
                   </div>
                   <div className="text-[11px] text-gray-400 font-medium uppercase tracking-wider flex items-center gap-1.5">
                     <span className="truncate max-w-[100px]">
@@ -909,7 +939,7 @@ export default function DocumentGrid({
                   )}
                   {doc.encrypted && (
                     <div className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                      <Lock size={10} /> Encrypted
+                      <Lock size={10} />
                     </div>
                   )}
                 </div>
