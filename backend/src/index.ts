@@ -242,8 +242,11 @@ async function scanDirectory(dir: string, category: string = "General") {
 
 // Routes
 app.get("/api/documents", async (req, res) => {
+  const { trash } = req.query;
+  const isTrash = trash === "true";
+
   const docs = await db.query.documents.findMany({
-    where: eq(documents.deleted, false),
+    where: eq(documents.deleted, isTrash),
     orderBy: [desc(documents.lastModified)],
   });
   res.json(docs);
@@ -373,13 +376,121 @@ app.delete("/api/documents/:id", async (req, res) => {
       documentId: id,
       action: "delete",
       timestamp: new Date(),
-      details: `Deleted document "${doc.name}"`,
+      details: `Moved document "${doc.name}" to trash`,
     });
 
     res.json({ success: true });
   } catch (error) {
     console.error("Delete error:", error);
     res.status(500).json({ error: "Failed to delete document" });
+  }
+});
+
+app.post("/api/documents/:id/restore", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    await db
+      .update(documents)
+      .set({ deleted: false })
+      .where(eq(documents.id, id));
+
+    await db.insert(documentHistory).values({
+      documentId: id,
+      action: "restore",
+      timestamp: new Date(),
+      details: `Restored document "${doc.name}" from trash`,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Restore error:", error);
+    res.status(500).json({ error: "Failed to restore document" });
+  }
+});
+
+app.delete("/api/documents/:id/permanent", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, id),
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    // Delete file from disk
+    try {
+      if (doc.type !== "folder") {
+        const fullPath = getAbsolutePath(doc.path);
+        await fs.unlink(fullPath);
+      } else {
+        // For folders, we'd need to delete recursively or ensure it's empty.
+        // For now, let's assume we just remove it from DB or try rmdir.
+        // Simplest: only allow deleting if it's a file, or handle folder delete.
+        const fullPath = getAbsolutePath(doc.path);
+        await fs.rm(fullPath, { recursive: true, force: true });
+      }
+    } catch (fsError) {
+      console.warn(
+        "File system delete error (might already be gone):",
+        fsError,
+      );
+    }
+
+    // Delete from DB (Hard delete)
+    await db.delete(documentHistory).where(eq(documentHistory.documentId, id));
+    await db.delete(documents).where(eq(documents.id, id));
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Permanent delete error:", error);
+    res.status(500).json({ error: "Failed to permanently delete document" });
+  }
+});
+
+app.post("/api/documents/trash/empty", async (req, res) => {
+  try {
+    const trashDocs = await db.query.documents.findMany({
+      where: eq(documents.deleted, true),
+    });
+
+    let count = 0;
+    for (const doc of trashDocs) {
+      // Delete from disk
+      try {
+        const fullPath = getAbsolutePath(doc.path);
+        if (doc.type === "folder") {
+          await fs.rm(fullPath, { recursive: true, force: true });
+        } else {
+          await fs.unlink(fullPath);
+        }
+      } catch (e) {
+        console.warn(`Failed to delete file ${doc.path} from disk:`, e);
+      }
+
+      // Delete from DB
+      await db
+        .delete(documentHistory)
+        .where(eq(documentHistory.documentId, doc.id));
+      await db.delete(documents).where(eq(documents.id, doc.id));
+      count++;
+    }
+
+    res.json({ success: true, count });
+  } catch (error) {
+    console.error("Empty trash error:", error);
+    res.status(500).json({ error: "Failed to empty trash" });
   }
 });
 

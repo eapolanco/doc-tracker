@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import DocumentGrid from "@/components/DocumentGrid";
@@ -17,6 +17,7 @@ import {
   Home,
   ClipboardCheck,
   FolderPlus,
+  Trash2,
 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type {
@@ -34,9 +35,9 @@ function App() {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [accounts, setAccounts] = useState<CloudAccount[]>([]);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [activeTab, setActiveTab] = useState<"docs" | "history" | "settings">(
-    "docs",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "docs" | "history" | "settings" | "trash"
+  >("docs");
   const [sourceFilter, setSourceFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
@@ -184,11 +185,12 @@ function App() {
     document.title = appSettings?.app?.name || "DocTracker";
   }, [appSettings?.app?.name]);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      const isTrash = activeTab === "trash";
       const [docsRes, histRes, accRes, setRes] = await Promise.all([
-        axios.get(`${API_BASE}/documents`),
+        axios.get(`${API_BASE}/documents${isTrash ? "?trash=true" : ""}`),
         axios.get(`${API_BASE}/history`),
         axios.get(`${API_BASE}/accounts`),
         axios.get(`${API_BASE}/settings`),
@@ -202,7 +204,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab]);
 
   const handleMove = async (ids: string[], targetPath: string) => {
     try {
@@ -247,6 +249,26 @@ function App() {
       await fetchData();
     } catch (err) {
       console.error("Error scanning:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete all items in the Trash?",
+      )
+    )
+      return;
+    try {
+      setLoading(true);
+      await axios.post(`${API_BASE}/documents/trash/empty`);
+      toast.success("Trash emptied");
+      await fetchData();
+    } catch (err) {
+      console.error("Error emptying trash:", err);
+      toast.error("Failed to empty trash");
     } finally {
       setLoading(false);
     }
@@ -348,7 +370,9 @@ function App() {
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
 
+  useEffect(() => {
     // Check for OAuth status in URL
     const params = new URLSearchParams(window.location.search);
     if (params.has("success") || params.has("error")) {
@@ -367,6 +391,8 @@ function App() {
         return "Activity History";
       case "settings":
         return "App Settings";
+      case "trash":
+        return "Trash";
       default:
         return "";
     }
@@ -561,7 +587,7 @@ function App() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
               <p className="text-sm text-gray-500">
-                {activeTab === "docs"
+                {activeTab === "docs" || activeTab === "trash"
                   ? `Managing ${sortedItems.length} items in this view`
                   : activeTab === "history"
                     ? "Recent changes and syncs"
@@ -585,7 +611,7 @@ function App() {
                   Paste Here ({clipboard.ids.length})
                 </button>
               )}
-              {activeTab === "docs" && (
+              {(activeTab === "docs" || activeTab === "trash") && (
                 <>
                   <div className="relative group">
                     <Search
@@ -626,6 +652,17 @@ function App() {
                     Sync Local
                   </button>
 
+                  {activeTab === "trash" && (
+                    <button
+                      className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
+                      onClick={handleEmptyTrash}
+                      disabled={loading || sortedItems.length === 0}
+                    >
+                      <Trash2 size={16} className="mr-2" />
+                      Empty Trash
+                    </button>
+                  )}
+
                   <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
                     <button
                       className={`p-1.5 rounded-md transition-all ${
@@ -658,7 +695,7 @@ function App() {
 
         <div className="flex flex-1 overflow-hidden relative">
           <div className="flex-1 min-w-0 overflow-y-auto px-8 pb-8 transition-all duration-200">
-            {activeTab === "docs" && (
+            {(activeTab === "docs" || activeTab === "trash") && (
               <div className="flex flex-col h-full">
                 <Breadcrumbs />
                 <DocumentGrid
@@ -686,6 +723,7 @@ function App() {
                       setSortOrder("asc");
                     }
                   }}
+                  isTrash={activeTab === "trash"}
                 />
               </div>
             )}

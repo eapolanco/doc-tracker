@@ -22,6 +22,7 @@ import {
   ArrowUp,
   ArrowDown,
   AlertTriangle,
+  RefreshCcw,
 } from "lucide-react";
 import type { Document, FileSystemItem } from "@/types";
 import { format } from "date-fns";
@@ -43,6 +44,7 @@ interface Props {
   sortField?: "name" | "date" | "category";
   sortOrder?: "asc" | "desc";
   onSort?: (field: "name" | "date" | "category") => void;
+  isTrash?: boolean;
 }
 
 const API_BASE = "/api";
@@ -117,6 +119,7 @@ export default function DocumentGrid({
   sortField,
   sortOrder,
   onSort,
+  isTrash = false,
 }: Props) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -208,14 +211,33 @@ export default function DocumentGrid({
   const handleBulkDelete = async () => {
     setConfirmConfig({
       isOpen: true,
-      title: "Delete Multiple Documents",
-      message: `Are you sure you want to delete ${selectedIds.size} documents? This action cannot be undone.`,
+      title: isTrash
+        ? "Permanently Delete Documents"
+        : "Delete Multiple Documents",
+      message: isTrash
+        ? `Are you sure you want to permanently delete ${selectedIds.size} documents? This cannot be undone.`
+        : `Are you sure you want to delete ${selectedIds.size} documents? This action cannot be undone.`,
       onConfirm: async () => {
         try {
-          await axios.post(`${API_BASE}/documents/bulk-delete`, {
-            ids: Array.from(selectedIds),
-          });
-          toast.success(`Successfully deleted ${selectedIds.size} documents`);
+          if (isTrash) {
+            // Bulk permanent delete - iterate for now as API might not support bulk permanent yet?
+            // Or better, let's assume we can loop or add a bulk permanent endpoint.
+            // For safety/simplicity, let's loop parallel requests for now or add bulk-permanent-delete endpoint.
+            // Wait, I updated index.ts but didn't add bulk permanent delete.
+            // I added `POST /api/documents/trash/empty`.
+            // I'll loop for now or simple solution: loop.
+            await Promise.all(
+              Array.from(selectedIds).map((id) =>
+                axios.delete(`${API_BASE}/documents/${id}/permanent`),
+              ),
+            );
+            toast.success(`Permanently deleted ${selectedIds.size} documents`);
+          } else {
+            await axios.post(`${API_BASE}/documents/bulk-delete`, {
+              ids: Array.from(selectedIds),
+            });
+            toast.success(`Moved ${selectedIds.size} documents to trash`);
+          }
           onRefresh();
           setSelectedIds(new Set());
         } catch (err) {
@@ -224,6 +246,22 @@ export default function DocumentGrid({
         }
       },
     });
+  };
+
+  const handleBulkRestore = async () => {
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) =>
+          axios.post(`${API_BASE}/documents/${id}/restore`),
+        ),
+      );
+      toast.success(`Restored ${selectedIds.size} documents`);
+      onRefresh();
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Failed to restore documents", err);
+      toast.error("Failed to restore documents");
+    }
   };
 
   const handleDownload = (e: React.MouseEvent, doc: Document) => {
@@ -256,6 +294,37 @@ export default function DocumentGrid({
     setActiveMenu(null);
   };
 
+  const handlePermanentDelete = async (doc: Document) => {
+    setConfirmConfig({
+      isOpen: true,
+      title: "Permanently Delete Document",
+      message: `Are you sure you want to permanently delete "${doc.name}"? This cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          await axios.delete(`${API_BASE}/documents/${doc.id}/permanent`);
+          toast.success("Document permanently deleted");
+          onRefresh();
+        } catch (err) {
+          console.error("Failed to delete", err);
+          toast.error("Failed to delete document");
+        }
+      },
+    });
+    setActiveMenu(null);
+  };
+
+  const handleRestore = async (doc: Document) => {
+    try {
+      await axios.post(`${API_BASE}/documents/${doc.id}/restore`);
+      toast.success("Document restored");
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to restore", err);
+      toast.error("Failed to restore document");
+    }
+    setActiveMenu(null);
+  };
+
   const startRename = (doc: Document) => {
     setRenamingId(doc.id);
     setRenameValue(doc.name);
@@ -284,6 +353,52 @@ export default function DocumentGrid({
   const renderActionsMenu = (doc: FileSystemItem) => {
     if (doc.type === "folder") return <div className="w-8" />;
     const fileDoc = doc as Document;
+
+    if (isTrash) {
+      return (
+        <div className="relative">
+          <button
+            className={`p-1.5 rounded-md transition-colors ${
+              activeMenu === doc.id
+                ? "bg-gray-100 text-gray-900"
+                : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveMenu(activeMenu === doc.id ? null : doc.id);
+            }}
+          >
+            <MoreVertical size={16} />
+          </button>
+
+          {activeMenu === doc.id && (
+            <div
+              ref={menuRef}
+              className="absolute top-full right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[160px] z-50 flex flex-col p-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRestore(fileDoc);
+                }}
+              >
+                <RefreshCcw size={14} /> Restore
+              </div>
+              <div className="h-px bg-gray-200 my-1" />
+              <div
+                className="flex items-center gap-2 px-3 py-2 text-sm text-red-500 rounded-md cursor-pointer hover:bg-red-50"
+                onClick={() => handlePermanentDelete(fileDoc)}
+              >
+                <Trash2 size={14} /> Delete Forever
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="relative">
         <button
@@ -416,35 +531,59 @@ export default function DocumentGrid({
         {selectedIds.size} items selected
       </span>
       <div className="flex items-center gap-4">
-        <button
-          onClick={() => {
-            if (onSetClipboard)
-              onSetClipboard({ ids: Array.from(selectedIds), type: "copy" });
-            setSelectedIds(new Set());
-          }}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          <Copy size={16} />
-          Copy
-        </button>
-        <button
-          onClick={() => {
-            if (onSetClipboard)
-              onSetClipboard({ ids: Array.from(selectedIds), type: "move" });
-            setSelectedIds(new Set());
-          }}
-          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
-        >
-          <Scissors size={16} />
-          Cut
-        </button>
-        <div className="w-px h-4 bg-gray-700 mx-2" />
+        {!isTrash && (
+          <>
+            <button
+              onClick={() => {
+                if (onSetClipboard)
+                  onSetClipboard({
+                    ids: Array.from(selectedIds),
+                    type: "copy",
+                  });
+                setSelectedIds(new Set());
+              }}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <Copy size={16} />
+              Copy
+            </button>
+            <button
+              onClick={() => {
+                if (onSetClipboard)
+                  onSetClipboard({
+                    ids: Array.from(selectedIds),
+                    type: "move",
+                  });
+                setSelectedIds(new Set());
+              }}
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <Scissors size={16} />
+              Cut
+            </button>
+            <div className="w-px h-4 bg-gray-700 mx-2" />
+          </>
+        )}
+
+        {isTrash && (
+          <>
+            <button
+              onClick={handleBulkRestore}
+              className="flex items-center gap-2 text-sm text-green-400 hover:text-green-300 transition-colors"
+            >
+              <RefreshCcw size={16} />
+              Restore
+            </button>
+            <div className="w-px h-4 bg-gray-700 mx-2" />
+          </>
+        )}
+
         <button
           onClick={handleBulkDelete}
           className="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors"
         >
           <Trash2 size={16} />
-          Delete
+          {isTrash ? "Delete Forever" : "Delete"}
         </button>
         <button
           onClick={() => setSelectedIds(new Set())}

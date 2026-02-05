@@ -5,12 +5,13 @@ import {
   Settings,
   HardDrive,
   Cloud,
+  Trash2,
 } from "lucide-react";
 import { version } from "../../package.json";
 
 interface SidebarProps {
-  activeTab: "docs" | "history" | "settings";
-  setActiveTab: (tab: "docs" | "history" | "settings") => void;
+  activeTab: "docs" | "history" | "settings" | "trash";
+  setActiveTab: (tab: "docs" | "history" | "settings" | "trash") => void;
   sourceFilter: string | null;
   setSourceFilter: (source: string | null) => void;
   setCurrentPath: (path: string) => void;
@@ -109,6 +110,27 @@ export default function Sidebar({
           >
             <Cloud size={18} />
             Google Drive
+          </button>
+        </div>
+
+        <div className="mb-6">
+          <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-3">
+            SYSTEM
+          </div>
+          <button
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "trash"
+                ? "bg-gray-900 text-white"
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            }`}
+            onClick={() => {
+              setActiveTab("trash");
+              setSourceFilter(null);
+              setCurrentPath("");
+            }}
+          >
+            <Trash2 size={18} />
+            Trash
           </button>
         </div>
       </nav>
