@@ -855,12 +855,16 @@ app.post("/api/upload", upload.single("file"), async (req, res) => {
       lastModified: new Date(),
     });
 
+    console.log(`Database entry created for: ${fileName} (ID: ${id})`);
+
     await db.insert(documentHistory).values({
       documentId: id,
       action: "create",
       timestamp: new Date(),
-      details: "Uploaded encrypted document",
+      details: `Uploaded encrypted document to ${category}`,
     });
+
+    console.log(`History entry created for: ${fileName}`);
 
     res.json({
       success: true,

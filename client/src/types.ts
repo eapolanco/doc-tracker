@@ -52,6 +52,7 @@ export interface AppSettings {
     theme: string;
     autoScan: boolean;
     scanIntervalHours: number;
+    animationsEnabled: boolean;
   };
   storage: {
     localEnabled: boolean;

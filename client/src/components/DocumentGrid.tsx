@@ -47,6 +47,7 @@ interface Props {
   sortOrder?: "asc" | "desc";
   onSort?: (field: "name" | "date" | "category") => void;
   isTrash?: boolean;
+  animationsEnabled?: boolean;
 }
 
 const API_BASE = "/api";
@@ -147,6 +148,7 @@ export default function DocumentGrid({
   sortOrder,
   onSort,
   isTrash = false,
+  animationsEnabled = false,
 }: Props) {
   // ... (rest of the state and handlers)
 
@@ -561,7 +563,12 @@ export default function DocumentGrid({
     <motion.div
       initial={{ opacity: 0, y: 50, x: "-50%" }}
       animate={{ opacity: 1, y: 0, x: "-50%" }}
-      exit={{ opacity: 0, y: 50, x: "-50%" }}
+      exit={{ opacity: 0, y: 20, x: "-50%" }}
+      transition={
+        animationsEnabled
+          ? { type: "spring", stiffness: 300, damping: 40, mass: 0.8 }
+          : { duration: 0 }
+      }
       className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
     >
       <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
@@ -732,8 +739,10 @@ export default function DocumentGrid({
                     ? "bg-blue-50/50 border-blue-500/50 shadow-sm"
                     : dropTargetId === doc.id
                       ? "bg-amber-50 border-amber-500 shadow-md scale-[1.02]"
-                      : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30"
-                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""}`}
+                      : isRecentlyUploaded(doc.uploadedAt)
+                        ? "bg-blue-50/30 border-blue-200/50 shadow-sm"
+                        : "bg-white border-gray-200 hover:shadow-md hover:border-blue-500/30"
+                } ${clipboardStatus?.ids.includes(doc.id) && clipboardStatus.type === "move" ? "opacity-30 grayscale" : ""} ${shouldPulse(doc.uploadedAt) ? "animate-pulse-blue ring-2 ring-blue-500/10" : ""}`}
               style={{ zIndex: activeMenu === doc.id ? 999 : 1 }}
               onClick={() => {
                 if (renamingId !== doc.id) {
@@ -840,9 +849,18 @@ export default function DocumentGrid({
   return (
     <motion.div
       layout
-      transition={{
-        layout: { type: "spring", stiffness: 260, damping: 35, mass: 1 },
-      }}
+      transition={
+        animationsEnabled
+          ? {
+              layout: {
+                type: "spring",
+                stiffness: 300,
+                damping: 40,
+                mass: 0.8,
+              },
+            }
+          : { duration: 0 }
+      }
       className="flex flex-wrap gap-6 py-4 relative items-stretch"
     >
       <AnimatePresence mode="popLayout">
@@ -856,18 +874,22 @@ export default function DocumentGrid({
           return (
             <motion.div
               layout
-              initial={{ opacity: 0, scale: 0.98, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 8 }}
-              transition={{
-                layout: {
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 35,
-                  mass: 1,
-                },
-                opacity: { duration: 0.25, ease: "easeOut" },
-              }}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={
+                animationsEnabled
+                  ? {
+                      layout: {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 40,
+                        mass: 0.8,
+                      },
+                      opacity: { duration: 0.2, ease: "easeOut" },
+                    }
+                  : { duration: 0 }
+              }
               key={doc.id}
               style={{
                 flex: "1 1 280px",

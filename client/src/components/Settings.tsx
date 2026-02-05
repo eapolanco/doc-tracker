@@ -49,6 +49,17 @@ export default function Settings({
     });
   };
 
+  const handleToggleAnimations = () => {
+    if (!appSettings) return;
+    onSaveSettings({
+      ...appSettings,
+      app: {
+        ...appSettings.app,
+        animationsEnabled: !appSettings.app.animationsEnabled,
+      },
+    });
+  };
+
   const startEditingName = () => {
     setTempName(appSettings?.app?.name || "DocTracker");
     setIsEditingName(true);
@@ -248,6 +259,31 @@ export default function Settings({
               <div
                 className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform duration-300 ${
                   appSettings.app.autoScan ? "left-7" : "left-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="font-medium text-gray-900 text-sm">
+                Enable Animations
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Show animations when navigating and interacting.
+              </div>
+            </div>
+            <button
+              onClick={handleToggleAnimations}
+              className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${
+                appSettings.app.animationsEnabled
+                  ? "bg-blue-600"
+                  : "bg-gray-200"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-sm transition-transform duration-300 ${
+                  appSettings.app.animationsEnabled ? "left-7" : "left-1"
                 }`}
               />
             </button>

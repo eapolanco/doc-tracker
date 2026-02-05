@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion, LayoutGroup, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  LayoutGroup,
+  AnimatePresence,
+  MotionConfig,
+} from "framer-motion";
 import axios from "axios";
 import Sidebar from "@/components/Sidebar";
 import DocumentGrid from "@/components/DocumentGrid";
@@ -598,300 +603,335 @@ function App() {
   };
 
   return (
-    <div
-      className={`flex h-screen w-full overflow-hidden bg-gray-50 transition-colors ${dragOver ? "bg-blue-50/50 outline-2 outline-dashed outline-blue-500 -outline-offset-2" : ""}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={handleGlobalDrop}
+    <MotionConfig
+      transition={
+        appSettings?.app?.animationsEnabled ? undefined : { duration: 0 }
+      }
     >
-      <Toaster position="top-right" richColors closeButton />
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        sourceFilter={sourceFilter}
-        setSourceFilter={setSourceFilter}
-        setCurrentPath={setCurrentPath}
-      />
+      <div
+        className={`flex h-screen w-full overflow-hidden bg-gray-50 transition-colors ${dragOver ? "bg-blue-50/50 outline-2 outline-dashed outline-blue-500 -outline-offset-2" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleGlobalDrop}
+      >
+        <Toaster position="top-right" richColors closeButton />
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
+          setCurrentPath={setCurrentPath}
+        />
 
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <header className="px-8 pt-8 pb-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{getTitle()}</h1>
-              <p className="text-sm text-gray-500">
-                {activeTab === "docs" || activeTab === "trash"
-                  ? `Managing ${sortedItems.length} items in this view`
-                  : activeTab === "history"
-                    ? "Recent changes and syncs"
-                    : "Manage cloud accounts and preferences"}
-              </p>
-            </div>
-
-            <div className="flex gap-3 items-center">
-              {(activeTab === "docs" || activeTab === "trash") && (
-                <>
-                  <div className="relative group">
-                    <Search
-                      size={18}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Search documents..."
-                      className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  <button
-                    className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-gray-50"
-                    onClick={() => setShowUploadModal(true)}
-                  >
-                    <Upload size={16} className="mr-2" />
-                    Upload Files
-                  </button>
-                  <button
-                    className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-gray-50"
-                    onClick={handleCreateFolder}
-                  >
-                    <FolderPlus size={16} className="mr-2" />
-                    New Folder
-                  </button>
-                  <button
-                    className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90 disabled:opacity-50"
-                    onClick={handleScan}
-                    disabled={loading}
-                  >
-                    <RefreshCw
-                      size={16}
-                      className={`mr-2 ${loading ? "animate-spin" : ""}`}
-                    />
-                    Sync Local
-                  </button>
-
-                  {activeTab === "trash" && (
-                    <button
-                      className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
-                      onClick={handleEmptyTrash}
-                      disabled={loading || sortedItems.length === 0}
-                    >
-                      <Trash2 size={16} className="mr-2" />
-                      Empty Trash
-                    </button>
-                  )}
-
-                  <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
-                    <button
-                      className={`p-1.5 rounded-md transition-all ${
-                        viewType === "grid"
-                          ? "bg-gray-100 text-blue-600 shadow-sm"
-                          : "text-gray-500 hover:text-gray-900"
-                      }`}
-                      onClick={() => setViewType("grid")}
-                      title="Grid View"
-                    >
-                      <LayoutGrid size={18} />
-                    </button>
-                    <button
-                      className={`p-1.5 rounded-md transition-all ${
-                        viewType === "list"
-                          ? "bg-gray-100 text-blue-600 shadow-sm"
-                          : "text-gray-500 hover:text-gray-900"
-                      }`}
-                      onClick={() => setViewType("list")}
-                      title="List View"
-                    >
-                      <List size={18} />
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </header>
-
-        <LayoutGroup>
-          <div className="flex flex-1 overflow-hidden relative">
-            <motion.div
-              layout
-              className="flex-1 min-w-0 overflow-y-auto px-8 pb-8"
-            >
-              {(activeTab === "docs" || activeTab === "trash") && (
-                <div className="flex flex-col h-full">
-                  <Breadcrumbs />
-                  <DocumentGrid
-                    documents={sortedItems}
-                    onPreview={(item: FileSystemItem) => {
-                      if (item.type === "folder") {
-                        setCurrentPath(item.path);
-                      } else {
-                        setSelectedDoc(item as Document);
-                      }
-                    }}
-                    onRefresh={fetchData}
-                    viewType={viewType}
-                    isSearching={searchQuery.length > 0}
-                    onMove={handleMove}
-                    onSetClipboard={setClipboard}
-                    clipboardStatus={clipboard}
-                    sortField={sortField}
-                    sortOrder={sortOrder}
-                    onSort={(field) => {
-                      if (sortField === field) {
-                        setSortOrder(sortOrder === "asc" ? "desc" : "asc");
-                      } else {
-                        setSortField(field);
-                        setSortOrder("asc");
-                      }
-                    }}
-                    isTrash={activeTab === "trash"}
-                  />
-                </div>
-              )}
-              {activeTab === "history" && <HistoryTimeline history={history} />}
-              {activeTab === "settings" && (
-                <Settings
-                  accounts={accounts}
-                  appSettings={appSettings}
-                  onSaveSettings={handleSaveSettings}
-                />
-              )}
-            </motion.div>
-
-            <motion.aside
-              layout
-              initial={false}
-              animate={{
-                width: selectedDoc ? 450 : 0,
-                opacity: selectedDoc ? 1 : 0,
-              }}
-              transition={{ type: "spring", stiffness: 260, damping: 35 }}
-              className="shrink-0 border-l border-gray-200 bg-white flex flex-col z-10 overflow-hidden"
-            >
-              {selectedDoc && (
-                <Visualizer
-                  document={selectedDoc}
-                  onClose={() => setSelectedDoc(null)}
-                />
-              )}
-            </motion.aside>
-          </div>
-        </LayoutGroup>
-
-        {showUploadModal && (
-          <UploadModal
-            onClose={() => setShowUploadModal(false)}
-            onUploadComplete={fetchData}
-            onProgressUpdate={setUploadProgress}
-          />
-        )}
-
-        {showCreateFolderModal && (
-          <CreateFolderModal
-            isOpen={showCreateFolderModal}
-            onClose={() => setShowCreateFolderModal(false)}
-            onCreate={submitCreateFolder}
-          />
-        )}
-
-        {/* Global Paste Bar */}
-        <AnimatePresence>
-          {clipboard && (
-            <motion.div
-              initial={{ opacity: 0, y: 50, x: "-50%" }}
-              animate={{ opacity: 1, y: 0, x: "-50%" }}
-              exit={{ opacity: 0, y: 50, x: "-50%" }}
-              className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
-            >
-              <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-                  <span className="text-xs font-black">
-                    {clipboard.ids.length}
-                  </span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-black text-indigo-600 uppercase tracking-wider leading-none">
-                    Clipboard
-                  </span>
-                  <span className="text-[13px] font-bold text-gray-900 leading-tight">
-                    {clipboard.type === "copy" ? "To Copy" : "To Move"}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (clipboard.type === "copy") {
-                    handleCopy(clipboard.ids, currentPath);
-                  } else {
-                    handleMove(clipboard.ids, currentPath);
-                  }
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 group"
-              >
-                <ClipboardCheck size={18} />
-                Paste Here
-              </button>
-
-              <button
-                onClick={() => setClipboard(null)}
-                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                title="Clear Clipboard"
-              >
-                <X size={20} />
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Global Upload Progress Bar */}
-        {uploadProgress !== null && (
-          <div className="fixed bottom-6 right-6 w-96 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl z-2000 p-4 animate-in slide-in-from-bottom-5 fade-in duration-300">
-            <div className="flex justify-between items-start mb-3">
+        <main className="flex-1 overflow-hidden flex flex-col">
+          <header className="px-8 pt-8 pb-4">
+            <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">
-                  {uploadProgress.current === uploadProgress.total
-                    ? "Upload Complete"
-                    : `Uploading ${uploadProgress.total} files...`}
-                </h3>
-                <p className="text-xs text-gray-500 truncate mt-0.5">
-                  {uploadProgress.fileName}
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {getTitle()}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  {activeTab === "docs" || activeTab === "trash"
+                    ? `Managing ${sortedItems.length} items in this view`
+                    : activeTab === "history"
+                      ? "Recent changes and syncs"
+                      : "Manage cloud accounts and preferences"}
                 </p>
               </div>
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
-                {Math.round(
-                  (uploadProgress.current / uploadProgress.total) * 100,
+
+              <div className="flex gap-3 items-center">
+                {(activeTab === "docs" || activeTab === "trash") && (
+                  <>
+                    <div className="relative group">
+                      <Search
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Search documents..."
+                        className="pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-gray-50"
+                      onClick={() => setShowUploadModal(true)}
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Upload Files
+                    </button>
+                    <button
+                      className="bg-white text-gray-900 border border-gray-200 px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-gray-50"
+                      onClick={handleCreateFolder}
+                    >
+                      <FolderPlus size={16} className="mr-2" />
+                      New Folder
+                    </button>
+                    <button
+                      className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:opacity-90 disabled:opacity-50"
+                      onClick={handleScan}
+                      disabled={loading}
+                    >
+                      <RefreshCw
+                        size={16}
+                        className={`mr-2 ${loading ? "animate-spin" : ""}`}
+                      />
+                      Sync Local
+                    </button>
+
+                    {activeTab === "trash" && (
+                      <button
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center transition-all hover:bg-red-700"
+                        onClick={handleEmptyTrash}
+                        disabled={loading || sortedItems.length === 0}
+                      >
+                        <Trash2 size={16} className="mr-2" />
+                        Empty Trash
+                      </button>
+                    )}
+
+                    <div className="flex bg-white border border-gray-200 rounded-lg p-1 shadow-sm">
+                      <button
+                        className={`p-1.5 rounded-md transition-all ${
+                          viewType === "grid"
+                            ? "bg-gray-100 text-blue-600 shadow-sm"
+                            : "text-gray-500 hover:text-gray-900"
+                        }`}
+                        onClick={() => setViewType("grid")}
+                        title="Grid View"
+                      >
+                        <LayoutGrid size={18} />
+                      </button>
+                      <button
+                        className={`p-1.5 rounded-md transition-all ${
+                          viewType === "list"
+                            ? "bg-gray-100 text-blue-600 shadow-sm"
+                            : "text-gray-500 hover:text-gray-900"
+                        }`}
+                        onClick={() => setViewType("list")}
+                        title="List View"
+                      >
+                        <List size={18} />
+                      </button>
+                    </div>
+                  </>
                 )}
-                %
-              </span>
+              </div>
             </div>
+          </header>
 
-            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-linear-to-r from-blue-500 to-indigo-600 transition-all duration-300 ease-out"
-                style={{
-                  width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+          <LayoutGroup>
+            <div className="flex flex-1 overflow-hidden relative">
+              <motion.div
+                layout
+                transition={
+                  appSettings?.app?.animationsEnabled
+                    ? undefined
+                    : { duration: 0 }
+                }
+                className="flex-1 min-w-0 overflow-y-auto px-8 pb-8"
+              >
+                {(activeTab === "docs" || activeTab === "trash") && (
+                  <div className="flex flex-col h-full">
+                    <Breadcrumbs />
+                    <DocumentGrid
+                      documents={sortedItems}
+                      onPreview={(item: FileSystemItem) => {
+                        if (item.type === "folder") {
+                          setCurrentPath(item.path);
+                        } else {
+                          setSelectedDoc(item as Document);
+                        }
+                      }}
+                      onRefresh={fetchData}
+                      viewType={viewType}
+                      isSearching={searchQuery.length > 0}
+                      onMove={handleMove}
+                      onSetClipboard={setClipboard}
+                      clipboardStatus={clipboard}
+                      sortField={sortField}
+                      sortOrder={sortOrder}
+                      onSort={(field) => {
+                        if (sortField === field) {
+                          setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                        } else {
+                          setSortField(field);
+                          setSortOrder("asc");
+                        }
+                      }}
+                      isTrash={activeTab === "trash"}
+                      animationsEnabled={appSettings?.app?.animationsEnabled}
+                    />
+                  </div>
+                )}
+                {activeTab === "history" && (
+                  <HistoryTimeline history={history} />
+                )}
+                {activeTab === "settings" && (
+                  <Settings
+                    accounts={accounts}
+                    appSettings={appSettings}
+                    onSaveSettings={handleSaveSettings}
+                  />
+                )}
+              </motion.div>
+
+              <motion.aside
+                layout
+                initial={false}
+                animate={{
+                  width: selectedDoc ? 450 : 0,
+                  opacity: selectedDoc ? 1 : 0,
                 }}
-              />
+                transition={
+                  appSettings?.app?.animationsEnabled
+                    ? {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 40,
+                        mass: 0.8,
+                      }
+                    : { duration: 0 }
+                }
+                className="shrink-0 border-l border-gray-200 bg-white flex flex-col z-10 overflow-hidden"
+              >
+                {selectedDoc && (
+                  <Visualizer
+                    document={selectedDoc}
+                    onClose={() => setSelectedDoc(null)}
+                  />
+                )}
+              </motion.aside>
             </div>
+          </LayoutGroup>
 
-            <div className="mt-3 flex justify-between items-center text-[10px] text-gray-400 font-medium">
-              <span>
-                {uploadProgress.current} of {uploadProgress.total} processed
-              </span>
-              {uploadProgress.current === uploadProgress.total && (
-                <span className="flex items-center gap-1 text-green-600">
-                  <ClipboardCheck size={10} /> Syncing directory...
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+          {showUploadModal && (
+            <UploadModal
+              onClose={() => setShowUploadModal(false)}
+              onUploadComplete={fetchData}
+              onProgressUpdate={setUploadProgress}
+              defaultCategory={
+                currentPath.split("/").filter(Boolean).pop() || "Personal"
+              }
+            />
+          )}
+
+          {showCreateFolderModal && (
+            <CreateFolderModal
+              isOpen={showCreateFolderModal}
+              onClose={() => setShowCreateFolderModal(false)}
+              onCreate={submitCreateFolder}
+            />
+          )}
+
+          {/* Global Paste Bar */}
+          <AnimatePresence>
+            {clipboard && (
+              <motion.div
+                initial={{ opacity: 0, y: 50, x: "-50%" }}
+                animate={{ opacity: 1, y: 0, x: "-50%" }}
+                exit={{ opacity: 0, y: 50, x: "-50%" }}
+                className="fixed bottom-10 left-1/2 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-3 py-2.5 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] z-50 flex items-center gap-1"
+              >
+                <div className="flex items-center gap-3 px-4 py-1.5 border-r border-gray-100 mr-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
+                    <span className="text-xs font-black">
+                      {clipboard.ids.length}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] font-black text-indigo-600 uppercase tracking-wider leading-none">
+                      Clipboard
+                    </span>
+                    <span className="text-[13px] font-bold text-gray-900 leading-tight">
+                      {clipboard.type === "copy" ? "To Copy" : "To Move"}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (clipboard.type === "copy") {
+                      handleCopy(clipboard.ids, currentPath);
+                    } else {
+                      handleMove(clipboard.ids, currentPath);
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95 group"
+                >
+                  <ClipboardCheck size={18} />
+                  Paste Here
+                </button>
+
+                <button
+                  onClick={() => setClipboard(null)}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                  title="Clear Clipboard"
+                >
+                  <X size={20} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Global Upload Progress Bar */}
+          <AnimatePresence>
+            {uploadProgress !== null && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="fixed bottom-6 right-6 w-96 bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-2xl z-2000 p-4"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      {uploadProgress.current === uploadProgress.total
+                        ? "Upload Complete"
+                        : `Uploading ${uploadProgress.total} files...`}
+                    </h3>
+                    <p className="text-xs text-gray-500 truncate mt-0.5">
+                      {uploadProgress.fileName}
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+                    {Math.round(
+                      (uploadProgress.current / uploadProgress.total) * 100,
+                    )}
+                    %
+                  </span>
+                </div>
+
+                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-linear-to-r from-blue-500 to-indigo-600 transition-all duration-300 ease-out"
+                    style={{
+                      width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-3 flex justify-between items-center text-[10px] text-gray-400 font-medium">
+                  <span>
+                    {uploadProgress.current} of {uploadProgress.total} processed
+                  </span>
+                  {uploadProgress.current === uploadProgress.total && (
+                    <span className="flex items-center gap-1 text-green-600">
+                      <ClipboardCheck size={10} /> Syncing directory...
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      </div>
+    </MotionConfig>
   );
 }
 

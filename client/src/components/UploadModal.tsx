@@ -7,6 +7,7 @@ interface Props {
   onProgressUpdate?: (
     progress: { total: number; current: number; fileName: string } | null,
   ) => void;
+  defaultCategory?: string;
 }
 
 const API_BASE = "/api";
@@ -28,9 +29,10 @@ export default function UploadModal({
   onClose,
   onUploadComplete,
   onProgressUpdate,
+  defaultCategory = "Personal",
 }: Props) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState("Personal");
+  const [category, setCategory] = useState(defaultCategory);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{
