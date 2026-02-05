@@ -10,6 +10,7 @@ RUN npm run build
 FROM node:20-alpine AS backend-build
 WORKDIR /app/backend
 COPY backend/package*.json ./
+RUN apk add --no-cache python3 make g++
 RUN npm install
 COPY backend/ ./
 RUN npm run build
@@ -35,4 +36,4 @@ ENV DATABASE_URL=/app/data/data.db
 
 EXPOSE 3001
 
-CMD ["node", "backend/dist/index.js"]
+CMD ["sh", "-c", "cd backend && npm run db:push && node dist/index.js"]

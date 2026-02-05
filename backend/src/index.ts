@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import https from "https";
 import selfsigned from "selfsigned";
@@ -812,72 +813,82 @@ app.post("/api/documents/bulk-delete", async (req, res) => {
 });
 
 // File upload endpoint
-app.post("/api/upload", upload.single("file"), async (req, res) => {
+// File upload endpoint (Bulk)
+app.post("/api/upload", upload.array("files"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
+    // Multer puts files in req.files if using array()
+    const files = req.files as Express.Multer.File[];
+
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No files uploaded" });
     }
 
     const category = req.body.category || "Personal";
-    const fileName = req.file.originalname;
-
-    // Determine destination
     const uploadDir = path.join(DOCUMENTS_ROOT, category);
     await fs.mkdir(uploadDir, { recursive: true });
 
-    const encryptedBuffer = encryptBuffer(req.file.buffer);
+    const results = [];
 
-    // Write encrypted file
-    // We keep the original extension to avoid confusing the file system walker,
-    // but the content is encrypted.
-    const fullPath = path.join(uploadDir, fileName);
-    await fs.writeFile(fullPath, encryptedBuffer);
+    for (const file of files) {
+      try {
+        const fileName = file.originalname;
+        const encryptedBuffer = encryptBuffer(file.buffer);
+        const fullPath = path.join(uploadDir, fileName);
 
-    const relativePath = path
-      .relative(DOCUMENTS_ROOT, fullPath)
-      .replace(/\\/g, "/");
+        // Write encrypted file
+        await fs.writeFile(fullPath, encryptedBuffer);
 
-    console.log(`Uploaded (Encrypted): ${fileName} to ${category}`);
+        const relativePath = path
+          .relative(DOCUMENTS_ROOT, fullPath)
+          .replace(/\\/g, "/");
 
-    // Insert into DB with encrypted=true
-    const id = uuidv4();
-    await db.insert(documents).values({
-      id,
-      name: fileName,
-      category,
-      path: relativePath,
-      cloudSource: "upload",
-      status: "valid",
-      encrypted: true,
-      fileSize: req.file.size, // Original file size before encryption
-      tags: "[]", // Empty tags array, can be updated later
-      uploadedAt: new Date(), // Track when file was uploaded
-      lastModified: new Date(),
-    });
+        console.log(`Uploaded (Encrypted): ${fileName} to ${category}`);
 
-    console.log(`Database entry created for: ${fileName} (ID: ${id})`);
+        // Insert into DB with encrypted=true
+        const id = uuidv4();
+        await db.insert(documents).values({
+          id,
+          name: fileName,
+          category,
+          path: relativePath,
+          cloudSource: "upload",
+          status: "valid",
+          encrypted: true,
+          fileSize: file.size, // Original file size before encryption
+          tags: "[]", // Empty tags array
+          uploadedAt: new Date(), // Track when file was uploaded
+          lastModified: new Date(),
+        });
 
-    await db.insert(documentHistory).values({
-      documentId: id,
-      action: "create",
-      timestamp: new Date(),
-      details: `Uploaded encrypted document to ${category}`,
-    });
+        await db.insert(documentHistory).values({
+          documentId: id,
+          action: "create",
+          timestamp: new Date(),
+          details: `Uploaded encrypted document to ${category}`,
+        });
 
-    console.log(`History entry created for: ${fileName}`);
+        results.push({
+          name: fileName,
+          status: "success",
+          path: relativePath,
+        });
+      } catch (fileErr) {
+        console.error(`Error processing file ${file.originalname}:`, fileErr);
+        results.push({
+          name: file.originalname,
+          status: "failed",
+          error: "Processing error",
+        });
+      }
+    }
 
     res.json({
       success: true,
-      file: {
-        name: fileName,
-        category,
-        path: relativePath,
-        size: encryptedBuffer.length,
-      },
+      results,
     });
   } catch (error) {
     console.error("Upload error:", error);
-    res.status(500).json({ error: "Failed to upload file" });
+    res.status(500).json({ error: "Failed to upload files" });
   }
 });
 
@@ -1031,7 +1042,19 @@ async function ensureDirectories() {
   } catch {
     await fs.writeFile(
       SETTINGS_PATH,
-      JSON.stringify({ appName: "DocTracker" }, null, 2),
+      JSON.stringify(
+        {
+          appName: "DocTracker",
+          app: {
+            autoScan: true,
+            scanIntervalHours: 1,
+            animationsEnabled: true,
+            theme: "light",
+          },
+        },
+        null,
+        2,
+      ),
     );
     console.log("✓ Created default settings.json");
   }
@@ -1041,6 +1064,13 @@ const TLS_ENABLED = process.env.TLS_ENABLED === "true";
 
 async function startServer() {
   await ensureDirectories();
+
+  // Perform initial scan to populate DB with folders
+  console.log("Performing initial scan...");
+  const rootDir = path.join(__dirname, "../../documents");
+  await scanDirectory(rootDir);
+  console.log("Initial scan complete.");
+
   await updateScanSchedule();
 
   if (TLS_ENABLED) {

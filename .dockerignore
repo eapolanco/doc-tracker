@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.env
+.dockerignore
+Dockerfile
+README.md
+data/
+documents/
+client/node_modules
+backend/node_modules

@@ -1,6 +1,7 @@
 services:
   doc-tracker:
     build: .
+    image: doc-tracker:latest
     container_name: doc-tracker
     ports:
       - "3001:3001"

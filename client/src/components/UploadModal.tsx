@@ -58,39 +58,37 @@ export default function UploadModal({
       onProgressUpdate({
         total: selectedFiles.length,
         current: 0,
-        fileName: selectedFiles[0].name,
+        fileName: "Uploading all files...",
       });
     }
 
-    let current = 0;
-    for (const file of selectedFiles) {
-      if (onProgressUpdate) {
-        onProgressUpdate({
-          total: selectedFiles.length,
-          current: current + 1,
-          fileName: file.name,
-        });
-      }
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("category", category);
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach((file) => formData.append("files", file));
+      formData.append("category", category);
 
-        const response = await fetch(`${API_BASE}/upload`, {
-          method: "POST",
-          body: formData,
-        });
+      const response = await fetch(`${API_BASE}/upload`, {
+        method: "POST",
+        body: formData,
+      });
 
-        if (response.ok) {
-          success.push(file.name);
-        } else {
-          failed.push(file.name);
-        }
-      } catch (error) {
-        console.error("Upload error:", error);
-        failed.push(file.name);
+      const data = await response.json();
+
+      if (response.ok && data.results) {
+        data.results.forEach((res: any) => {
+          if (res.status === "success") {
+            success.push(res.name);
+          } else {
+            failed.push(res.name);
+          }
+        });
+      } else {
+        // If the request completely failed
+        selectedFiles.forEach((file) => failed.push(file.name));
       }
-      current++;
+    } catch (error) {
+      console.error("Upload error:", error);
+      selectedFiles.forEach((file) => failed.push(file.name));
     }
 
     setUploadStatus({ success, failed });

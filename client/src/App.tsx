@@ -355,22 +355,28 @@ function App() {
       fileName: files[0].name,
     });
 
-    let current = 0;
-    for (const file of files) {
+    setLoading(true);
+    setUploadProgress({
+      total: files.length,
+      current: 0,
+      fileName: "Uploading all files...",
+    });
+
+    try {
+      const formData = new FormData();
+      files.forEach((file) => formData.append("files", file));
+      formData.append("category", targetCategory);
+
+      await axios.post(`${API_BASE}/upload`, formData);
+
       setUploadProgress({
         total: files.length,
-        current: current + 1,
-        fileName: file.name,
+        current: files.length,
+        fileName: "Processing complete",
       });
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("category", targetCategory);
-        await axios.post(`${API_BASE}/upload`, formData);
-      } catch (err) {
-        console.error("Upload error:", err);
-      }
-      current++;
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error("Failed to upload files");
     }
 
     await axios.post(`${API_BASE}/scan`);

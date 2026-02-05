@@ -35,10 +35,12 @@
     ],
     "packageFiles": [
         "package.json",
-        "client/package.json"
+        "client/package.json",
+        "backend/package.json"
     ],
     "bumpFiles": [
         "package.json",
-        "client/package.json"
+        "client/package.json",
+        "backend/package.json"
     ]
 }
