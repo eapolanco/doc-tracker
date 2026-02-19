@@ -13,7 +13,7 @@ DocTracker is a document management application designed to help you organize an
 
 ### Data in Transit (TLS)
 
-The "https://" at the beginning of URL indicates that all communication between your device and server is encrypted using Transport Layer Security (TLS). Microsoft uses 2048-bit keys to prevent "man-in-the-middle" attacks.
+The "https://" at the beginning of URL indicates that all communication between your device and server is encrypted using Transport Layer Security (TLS). Inspirated on Microsoft's Onedrive that uses 2048-bit keys to prevent "man-in-the-middle" attacks.
 
 ## Getting Started
 
